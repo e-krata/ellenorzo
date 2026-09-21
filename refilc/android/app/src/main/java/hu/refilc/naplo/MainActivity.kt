@@ -1,4 +1,4 @@
-package hu.refilc.naplo
+package hu.ekrata.ellenorzo
 
 import io.flutter.embedding.android.FlutterActivity
 

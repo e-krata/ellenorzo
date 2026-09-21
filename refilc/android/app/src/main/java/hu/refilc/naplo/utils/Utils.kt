@@ -1,4 +1,4 @@
-package hu.refilc.naplo.utils
+package hu.ekrata.ellenorzo.utils
 
 import android.content.Context
 import android.net.ConnectivityManager

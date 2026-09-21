@@ -1,4 +1,4 @@
-package hu.refilc.naplo.widget_timetable
+package hu.ekrata.ellenorzo.widget_timetable
 
 import android.app.PendingIntent
 import android.app.UiModeManager
@@ -30,11 +30,11 @@ import java.text.ParseException
 import java.text.SimpleDateFormat
 import java.util.Date
 
-import hu.refilc.naplo.database.DBManager
-import hu.refilc.naplo.MainActivity
-import hu.refilc.naplo.R
+import hu.ekrata.ellenorzo.database.DBManager
+import hu.ekrata.ellenorzo.MainActivity
+import hu.ekrata.ellenorzo.R
 
-import hu.refilc.naplo.utils.Week
+import hu.ekrata.ellenorzo.utils.Week
 
 import es.antonborri.home_widget.HomeWidgetBackgroundIntent
 import es.antonborri.home_widget.HomeWidgetLaunchIntent

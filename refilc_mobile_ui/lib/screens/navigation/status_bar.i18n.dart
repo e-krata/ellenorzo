@@ -11,8 +11,8 @@ extension Localization on String {
         },
         "hu_hu": {
           "Syncing data": "Adatok frissítése...",
-          "KRETA Maintenance": "KRÉTA Karbantartás",
-          "KRETA API error": "KRÉTA API Hiba",
+          "KRETA Maintenance": "KRÁTA Karbantartás",
+          "KRETA API error": "KRÁTA API Hiba",
           "No connection": "Nincs kapcsolat",
         },
         "de_de": {

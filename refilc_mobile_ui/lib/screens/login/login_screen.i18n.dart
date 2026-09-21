@@ -17,7 +17,7 @@ extension Localization on String {
               "Invalid Username/Password!",
           "error": "Failed to log in.",
           "schools_error": "Failed to get schools.",
-          "login_w_kreten": "Log in with your e-KRÉTA account to continue!",
+          "login_w_kreten": "Log in with your eKRÁTA account to continue!",
           "privacy": "Privacy Policy",
           "welcome_title_1": "This is your home",
           "welcome_text_1":
@@ -33,7 +33,7 @@ extension Localization on String {
           "welcome_title_4": "Take as many notes as you want.",
           "welcome_text_4":
               "You can also organise your notes by lesson in the built-in notebook, so you can find everything in one app.",
-          "login_w_kreta_acc": "Log in with your e-KRÉTA account",
+          "login_w_kreta_acc": "Log in with your KRÁTA account",
         },
         "hu_hu": {
           "username": "Felhasználónév",
@@ -50,7 +50,7 @@ extension Localization on String {
           "error": "Sikertelen bejelentkezés.",
           "schools_error": "Nem sikerült lekérni az iskolákat.",
           "login_w_kreten":
-              "Jelentkezz be az e-KRÉTA fiókoddal a folytatáshoz!",
+              "Jelentkezz be a KRÁTA fiókoddal a folytatáshoz!",
           "privacy": "Adatkezelési tájékoztató",
           "welcome_title_1": "Ez a te kis otthonod",
           "welcome_text_1":
@@ -65,7 +65,7 @@ extension Localization on String {
           "welcome_title_4": "Füzetelj annyit, amennyit csak szeretnél.",
           "welcome_text_4":
               "A beépített jegyzetfüzetbe órák szerint is rendezheted a jegyzeteidet, így mindent megtalálsz egy appban.",
-          "login_w_kreta_acc": "Bejelentkezés e-KRÉTA fiókkal",
+          "login_w_kreta_acc": "Bejelentkezés KRÁTA fiókkal",
         },
         "de_de": {
           "username": "Benutzername",
@@ -80,7 +80,7 @@ extension Localization on String {
           "error": "Anmeldung fehlgeschlagen.",
           "schools_error": "Keine Schulen gefunden.",
           "login_w_kreten":
-              "Melden Sie sich mit Ihrem e-KRÉTA-Konto an, um fortzufahren!",
+              "Melden Sie sich mit Ihrem KRÁTA-Konto an, um fortzufahren!",
           "privacy": "Datenschutzrichtlinie",
           //TODO: translate to german, waiting for translator
           "welcome_title_1": "This is your home",
@@ -97,7 +97,7 @@ extension Localization on String {
           "welcome_title_4": "Take as many notes as you want.",
           "welcome_text_4":
               "You can also organise your notes by lesson in the built-in notebook, so you can find everything in one app.",
-          "login_w_kreta_acc": "Mit e-KRÉTA-Konto anmelden",
+          "login_w_kreta_acc": "Mit e-KRÁTA-Konto anmelden",
         },
       };
 

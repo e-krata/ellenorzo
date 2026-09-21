@@ -4,7 +4,7 @@ extension SettingsLocalization on String {
   static final _t = Translations.byLocale("hu_hu") +
       {
         "en_en": {
-          "ekretaYou": "e-KRÉTA, you",
+          "ekretaYou": "eKRÁTA, you",
           "description": "Unexpected error while using the application!",
           "submit": "Submit",
           "goback": "Go back",
@@ -18,7 +18,7 @@ extension SettingsLocalization on String {
               "An unexpected error occurred while using the app.",
         },
         "hu_hu": {
-          "ekretaYou": "e-KRÉTA, te",
+          "ekretaYou": "eKRÁTA, te",
           "description": "Váratlan hiba az alkalmazás használata közben!",
           "submit": "Hiba jelentése",
           "goback": "Vissza",

@@ -1,4 +1,4 @@
-package hu.refilc.naplo.widget_timetable
+package hu.ekrata.ellenorzo.widget_timetable
 
 import android.app.UiModeManager
 import android.appwidget.AppWidgetManager
@@ -19,8 +19,8 @@ import org.json.JSONObject
 import java.util.Collections
 import java.util.Comparator
 
-import hu.refilc.naplo.database.DBManager
-import hu.refilc.naplo.R
+import hu.ekrata.ellenorzo.database.DBManager
+import hu.ekrata.ellenorzo.R
 
 class WidgetTimetableDataProvider(context: Context, intent: Intent) : RemoteViewsService.RemoteViewsFactory {
     private val context: Context

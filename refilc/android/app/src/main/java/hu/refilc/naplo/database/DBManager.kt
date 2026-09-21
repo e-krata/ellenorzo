@@ -1,4 +1,4 @@
-package hu.refilc.naplo.database
+package hu.ekrata.ellenorzo.database
 
 import android.content.ContentValues
 import android.content.Context
@@ -7,7 +7,7 @@ import android.database.sqlite.SQLiteDatabase
 
 import java.sql.SQLException
 
-import hu.refilc.naplo.database.SQLiteHelper
+import hu.ekrata.ellenorzo.database.SQLiteHelper
 import kotlin.arrayOf
 
 class DBManager(private val context: Context) {

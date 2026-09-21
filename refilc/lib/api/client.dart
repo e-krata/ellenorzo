@@ -36,7 +36,7 @@ class FilcAPI {
   static const plusScopes = "0.0.0.0/";
 
   // Updates
-  static const repo = "refilc/naplo";
+  static const repo = "e-krata/ellenorzo";
   static const releases = "https://api.github.com/repos/$repo/releases";
 
   // Share API

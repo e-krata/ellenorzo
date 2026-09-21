@@ -28,9 +28,9 @@ class PrivacyView extends StatelessWidget {
               ),
               SelectableLinkify(
                 text: """
-  • A reFilc (továbbiakban alkalmazás) egy mobilos, asztali és webes kliensalkalmazás, segítségével az e-Kréta rendszeréből letöltheted és felhasználóbarát módon megjelenítheted az adataidat. Tanulmányi adataid csak közvetlenül az alkalmazás és a Kréta-szerverek között közlekednek, titkosított kapcsolaton keresztül.
+  • A reFilc (továbbiakban alkalmazás) egy mobilos, asztali és webes kliensalkalmazás, segítségével a KRÁTA rendszeréből letöltheted és felhasználóbarát módon megjelenítheted az adataidat. Tanulmányi adataid csak közvetlenül az alkalmazás és a Kráta-szerverek között közlekednek, titkosított kapcsolaton keresztül.
 
-  • A reFilc fejlesztői és/vagy üzemeltetői, valamint az alkalmazás a tanulmányi és személyes adataidat semmilyen célból és semmilyen körülmények között nem másolják, nem tárolják és harmadik félnek nem továbbítják. Ezeket így az Educational Development Informatikai Zrt. kezeli, az Ő adatkezeléssel kapcsolatos tájékoztatójukat itt találod: https://tudasbazis.ekreta.hu/pages/viewpage.action?pageId=4065038
+  • A reFilc fejlesztői és/vagy üzemeltetői, valamint az alkalmazás a tanulmányi és személyes adataidat semmilyen célból és semmilyen körülmények között nem másolják, nem tárolják és harmadik félnek nem továbbítják. Ezeket így az Educational Development Informatikai Zrt. kezeli, az Ő adatkezeléssel kapcsolatos tájékoztatójukat itt találod: https://ekrata.ct.ws/33-2/
 
   • Azok törlésével vagy módosítával kapcsolatban keresd az osztályfőnöködet vagy az iskolád rendszergazdáját.
 
