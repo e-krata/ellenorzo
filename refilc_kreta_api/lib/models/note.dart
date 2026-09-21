@@ -26,26 +26,74 @@ class Note {
     this.json,
   });
 
-  factory Note.fromJson(Map json) {
+  factory Note.fromJson(
+    Map json,
+  ) {
+    final group =
+        json['OsztalyCsoport'];
+
+    final type =
+        json['Tipus'];
+
     return Note(
-      id: json["Uid"] ?? "",
-      title: json["Cim"] ?? "",
-      date: json["Datum"] != null
-          ? DateTime.parse(json["Datum"]).toLocal()
-          : DateTime(0),
-      submitDate: json["KeszitesDatuma"] != null
-          ? DateTime.parse(json["KeszitesDatuma"]).toLocal()
-          : DateTime(0),
-      teacher: Teacher.fromString((json["KeszitoTanarNeve"] ?? "").trim()),
-      seenDate: json["LattamozasDatuma"] != null
-          ? DateTime.parse(json["LattamozasDatuma"]).toLocal()
-          : DateTime(0),
-      groupId: json["OsztalyCsoport"] != null
-          ? json["OsztalyCsoport"]["Uid"] ?? ""
-          : "",
-      content: json["Tartalom"].replaceAll("\r", "") ?? "",
-      type: json["Tipus"] != null ? Category.fromJson(json["Tipus"]) : null,
+      id:
+          json['Uid']?.toString() ?? '',
+      title:
+          (json['Cim'] ?? '')
+              .toString(),
+      date:
+          _date(
+        json['Datum'],
+      ),
+      submitDate:
+          _date(
+        json['KeszitesDatuma'],
+      ),
+      teacher:
+          Teacher.fromString(
+        (
+          json['KeszitoTanarNeve'] ??
+          ''
+        ).toString().trim(),
+      ),
+      seenDate:
+          _date(
+        json['LattamozasDatuma'],
+      ),
+      groupId:
+          group is Map
+              ? group['Uid']
+                      ?.toString() ??
+                  ''
+              : '',
+      content:
+          (json['Tartalom'] ?? '')
+              .toString()
+              .replaceAll(
+                '\r',
+                '',
+              ),
+      type:
+          type is Map
+              ? Category.fromJson(
+                  type,
+                )
+              : null,
       json: json,
     );
+  }
+
+  static DateTime _date(
+    dynamic value,
+  ) {
+    if (value == null ||
+        value.toString().isEmpty) {
+      return DateTime(0);
+    }
+
+    return DateTime.tryParse(
+          value.toString(),
+        )?.toLocal() ??
+        DateTime(0);
   }
 }

@@ -2,6 +2,7 @@ import 'package:refilc_kreta_api/client/api.dart';
 
 import 'subject.dart';
 import 'teacher.dart';
+import 'category.dart';
 
 class Homework {
   Map? json;
@@ -32,32 +33,118 @@ class Homework {
     this.json,
   });
 
-  factory Homework.fromJson(Map json) {
+  factory Homework.fromJson(
+    Map json,
+  ) {
+    final subjectJson =
+        _map(json['Tantargy']);
+
+    final groupJson =
+        _map(json['OsztalyCsoport']);
+
+    final attachmentValues =
+        json['Csatolmanyok'];
+
+    final attachments =
+        <HomeworkAttachment>[];
+
+    if (attachmentValues is List) {
+      for (final value
+          in attachmentValues) {
+        if (value is Map) {
+          attachments.add(
+            HomeworkAttachment.fromJson(
+              value,
+            ),
+          );
+        }
+      }
+    }
+
     return Homework(
-      id: json["Uid"] ?? "",
-      date: json["RogzitesIdopontja"] != null
-          ? DateTime.parse(json["RogzitesIdopontja"]).toLocal()
-          : DateTime(0),
-      lessonDate: json["FeladasDatuma"] != null
-          ? DateTime.parse(json["FeladasDatuma"]).toLocal()
-          : DateTime(0),
-      deadline: json["HataridoDatuma"] != null
-          ? DateTime.parse(json["HataridoDatuma"]).toLocal()
-          : DateTime(0),
-      byTeacher: json["IsTanarRogzitette"] ?? true,
-      homeworkEnabled: json["IsTanuloHaziFeladatEnabled"] ?? false,
-      teacher: Teacher.fromString((json["RogzitoTanarNeve"] ?? "").trim()),
-      content: (json["Szoveg"] ?? "").trim(),
-      subject: GradeSubject.fromJson(json["Tantargy"] ?? {}),
-      group: json["OsztalyCsoport"] != null
-          ? json["OsztalyCsoport"]["Uid"] ?? ""
-          : "",
-      attachments: ((json["Csatolmanyok"] ?? []) as List)
-          .cast<Map>()
-          .map((Map json) => HomeworkAttachment.fromJson(json))
-          .toList(),
+      id:
+          json['Uid']?.toString() ?? '',
+      date:
+          _date(
+        json['RogzitesIdopontja'] ??
+            json['RogzitesDatuma'],
+      ),
+      lessonDate:
+          _date(
+        json['FeladasDatuma'] ??
+            json['Datum'],
+      ),
+      deadline:
+          _date(
+        json['HataridoDatuma'] ??
+            json['Hatarido'],
+      ),
+      byTeacher:
+          json['IsTanarRogzitette'] !=
+              false,
+      homeworkEnabled:
+          json['IsTanuloHaziFeladatEnabled'] ==
+              true,
+      teacher:
+          Teacher.fromString(
+        (
+          json['RogzitoTanarNeve'] ??
+          ''
+        ).toString().trim(),
+      ),
+      content: (
+        json['Szoveg'] ??
+        json['FeladatSzovege'] ??
+        ''
+      ).toString().trim(),
+      subject:
+          subjectJson.isNotEmpty
+              ? GradeSubject.fromJson(
+                  subjectJson,
+                )
+              : GradeSubject(
+                  id: json['TantargyUid']
+                          ?.toString() ??
+                      '',
+                  category:
+                      Category.fromJson(
+                    {},
+                  ),
+                  name:
+                      json['TantargyNev']
+                              ?.toString() ??
+                          '',
+                ),
+      group: (
+        groupJson['Uid'] ??
+        json['OsztalyCsoportUid'] ??
+        ''
+      ).toString(),
+      attachments:
+          attachments,
       json: json,
     );
+  }
+
+  static Map _map(
+    dynamic value,
+  ) =>
+      value is Map
+          ? value
+          : <String, dynamic>{};
+
+  static DateTime _date(
+    dynamic value,
+  ) {
+    if (value == null ||
+        value.toString().isEmpty) {
+      return DateTime(0);
+    }
+
+    return DateTime.tryParse(
+          value.toString(),
+        )?.toLocal() ??
+        DateTime(0);
   }
 }
 
@@ -67,20 +154,50 @@ class HomeworkAttachment {
   String name;
   String type;
 
-  HomeworkAttachment(
-      {required this.id, this.name = "", this.type = "", this.json});
+  HomeworkAttachment({
+    required this.id,
+    this.name = '',
+    this.type = '',
+    this.json,
+  });
 
-  factory HomeworkAttachment.fromJson(Map json) {
+  factory HomeworkAttachment.fromJson(
+    Map json,
+  ) {
     return HomeworkAttachment(
-      id: json["Uid"] ?? "",
-      name: json["Nev"] ?? "",
-      type: json["Tipus"] ?? "",
+      id:
+          json['Uid']?.toString() ?? '',
+      name: (
+        json['Nev'] ??
+        json['FajlNev'] ??
+        ''
+      ).toString(),
+      type: (
+        json['Tipus'] ??
+        json['MimeType'] ??
+        ''
+      ).toString(),
       json: json,
     );
   }
 
-  String downloadUrl(String iss) =>
-      KretaAPI.downloadHomeworkAttachments(iss, id, type);
-  bool get isImage =>
-      name.endsWith(".jpg") || name.endsWith(".jpeg") || name.endsWith(".png");
+  String downloadUrl(
+    String iss,
+  ) =>
+      KretaAPI
+          .downloadHomeworkAttachments(
+        iss,
+        id,
+        type,
+      );
+
+  bool get isImage {
+    final lower =
+        name.toLowerCase();
+
+    return lower.endsWith('.jpg') ||
+        lower.endsWith('.jpeg') ||
+        lower.endsWith('.png') ||
+        lower.endsWith('.webp');
+  }
 }

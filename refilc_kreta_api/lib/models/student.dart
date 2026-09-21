@@ -13,7 +13,6 @@ class Student {
   List<String> parents;
   int gradeDelay;
   String? bankAccount;
-  // List<String> parentsPhone;
   String? className;
 
   Student({
@@ -26,46 +25,197 @@ class Student {
     required this.parents,
     required this.gradeDelay,
     this.bankAccount,
-    // required this.parentsPhone,
     this.json,
   });
 
   factory Student.fromJson(Map json) {
-    List<String> parents = [];
+    final guardians = json['Gondviselok'];
 
-    parents = ((json["Gondviselok"] ?? []) as List)
-        .cast<Map>()
-        .map((e) => e["Nev"] ?? "")
-        .toList()
-        .cast<String>();
-    if (json["AnyjaNeve"] != null) parents.insert(0, json["AnyjaNeve"]);
+    final parents = <String>[];
 
-    parents = parents.map((e) => e.capitalize()).toList(); // fix name casing
-    parents = parents.toSet().toList(); // remove duplicates
+    if (guardians is List) {
+      for (final guardian in guardians) {
+        if (guardian is Map) {
+          final name =
+              guardian['Nev']?.toString().trim() ?? '';
+
+          if (name.isNotEmpty) {
+            parents.add(name);
+          }
+        }
+      }
+    }
+
+    final motherName =
+        json['AnyjaNeve']?.toString().trim() ?? '';
+
+    if (motherName.isNotEmpty) {
+      parents.insert(0, motherName);
+    }
+
+    final normalizedParents = parents
+        .map((e) => e.capitalize())
+        .where((e) => e.trim().isNotEmpty)
+        .toSet()
+        .toList();
+
+    // ----------------------------------------------------------
+    // Születési dátum
+    // ----------------------------------------------------------
+
+    DateTime birth = DateTime(0);
+
+    final birthDate =
+        json['SzuletesiDatum'];
+
+    if (birthDate != null &&
+        birthDate.toString().isNotEmpty) {
+      birth = DateTime.tryParse(
+            birthDate.toString(),
+          )?.toLocal() ??
+          DateTime(0);
+    } else {
+      final year =
+          _toInt(json['SzuletesiEv']);
+
+      final month =
+          _toInt(json['SzuletesiHonap']);
+
+      final day =
+          _toInt(json['SzuletesiNap']);
+
+      if (year > 0 &&
+          month > 0 &&
+          day > 0) {
+        birth = DateTime(
+          year,
+          month,
+          day,
+        );
+      }
+    }
+
+    // ----------------------------------------------------------
+    // Cím
+    // ----------------------------------------------------------
+
+    String? address;
+
+    final addresses =
+        json['Cimek'];
+
+    if (addresses is List &&
+        addresses.isNotEmpty) {
+      final first =
+          addresses.first?.toString().trim() ?? '';
+
+      if (first.isNotEmpty) {
+        address = first;
+      }
+    }
+
+    // ----------------------------------------------------------
+    // Beállítások
+    // ----------------------------------------------------------
+
+    final institute =
+        json['Intezmeny'];
+
+    int gradeDelay = 0;
+
+    if (institute is Map) {
+      final settings =
+          institute['TestreszabasBeallitasok'];
+
+      if (settings is Map) {
+        gradeDelay = _toInt(
+          settings[
+              'ErtekelesekMegjelenitesenekKesleltetesenekMerteke'],
+        );
+      }
+    }
+
+    // ----------------------------------------------------------
+    // Bankszámla
+    // ----------------------------------------------------------
+
+    String? bankAccount;
+
+    final bank =
+        json['Bankszamla'];
+
+    if (bank is Map) {
+      final value =
+          bank['BankszamlaSzam']
+                  ?.toString()
+                  .trim() ??
+              '';
+
+      if (value.isNotEmpty) {
+        bankAccount = value;
+      }
+    }
 
     return Student(
-      id: json["Uid"] ?? "",
-      name: (json["Nev"] ?? json["SzuletesiNev"] ?? "").trim(),
+      id:
+          json['Uid']?.toString() ?? '',
+      name: (
+        json['Nev'] ??
+        json['SzuletesiNev'] ??
+        ''
+      ).toString().trim(),
       school: School(
-        instituteCode: json["IntezmenyAzonosito"] ?? "",
-        name: json["IntezmenyNev"] ?? "",
-        city: "",
+        instituteCode:
+            json['IntezmenyAzonosito']
+                    ?.toString() ??
+                '',
+        name:
+            json['IntezmenyNev']
+                    ?.toString()
+                    .trim() ??
+                '',
+        city: _schoolCity(json),
       ),
-      birth: json["SzuletesiDatum"] != null
-          ? DateTime.parse(json["SzuletesiDatum"]).toLocal()
-          : DateTime(0),
-      yearId: json["TanevUid"] ?? "",
-      address: json["Cimek"] != null
-          ? json["Cimek"].length > 0
-              ? json["Cimek"][0]
-              : null
-          : null,
-      parents: parents,
-      gradeDelay: json["Intezmeny"]["TestreszabasBeallitasok"]
-              ["ErtekelesekMegjelenitesenekKesleltetesenekMerteke"] ??
-          0,
-      bankAccount: json["Bankszamla"]["BankszamlaSzam"],
+      birth: birth,
+      yearId:
+          json['TanevUid']?.toString() ?? '',
+      address: address,
+      parents: normalizedParents,
+      gradeDelay: gradeDelay,
+      bankAccount: bankAccount,
       json: json,
     );
+  }
+
+  static int _toInt(dynamic value) {
+    if (value is int) {
+      return value;
+    }
+
+    if (value is num) {
+      return value.toInt();
+    }
+
+    return int.tryParse(
+          value?.toString() ?? '',
+        ) ??
+        0;
+  }
+
+  static String _schoolCity(
+    Map json,
+  ) {
+    final institute =
+        json['Intezmeny'];
+
+    if (institute is Map) {
+      return (
+        institute['TelepulesNev'] ??
+        institute['Varos'] ??
+        ''
+      ).toString().trim();
+    }
+
+    return '';
   }
 }

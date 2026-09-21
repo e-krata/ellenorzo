@@ -10,34 +10,56 @@ class GradeSubject {
   double? customRounding;
   Teacher? teacher;
 
-  bool get isRenamed => renamedTo != null;
-  bool get hasCustomRounding => customRounding != null;
+  bool get isRenamed =>
+      renamedTo != null;
+
+  bool get hasCustomRounding =>
+      customRounding != null;
 
   GradeSubject({
     required this.id,
     required this.category,
     required this.name,
     this.renamedTo,
-    // v5
     this.customRounding,
     this.teacher,
   });
 
-  factory GradeSubject.fromJson(Map json) {
-    final id = json["Uid"] ?? "";
+  factory GradeSubject.fromJson(
+    Map json,
+  ) {
+    final category =
+        json['Kategoria'];
+
     return GradeSubject(
-      id: id,
-      category: Category.fromJson(json["Kategoria"] ?? {}),
-      name: (json["Nev"] ?? "").trim(),
+      id: (
+        json['Uid'] ??
+        json['TantargyUid'] ??
+        ''
+      ).toString(),
+      category: Category.fromJson(
+        category is Map
+            ? category
+            : {},
+      ),
+      name: (
+        json['Nev'] ??
+        json['TantargyNev'] ??
+        ''
+      ).toString().trim(),
     );
   }
 
   @override
   bool operator ==(other) {
-    if (other is! GradeSubject) return false;
+    if (other is! GradeSubject) {
+      return false;
+    }
+
     return id == other.id;
   }
 
   @override
-  int get hashCode => id.hashCode;
+  int get hashCode =>
+      id.hashCode;
 }

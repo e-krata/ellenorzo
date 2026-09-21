@@ -5,30 +5,52 @@ class Teacher {
   String name;
   String? renamedTo;
 
-  bool get isRenamed => renamedTo != null;
+  bool get isRenamed =>
+      renamedTo != null;
 
-  Teacher({required this.id, required this.name, this.renamedTo});
+  Teacher({
+    required this.id,
+    required this.name,
+    this.renamedTo,
+  });
 
-  factory Teacher.fromJson(Map json) {
+  factory Teacher.fromJson(
+    Map json,
+  ) {
     return Teacher(
-      id: json["Uid"] ?? "",
-      name: (json["Nev"] ?? "").trim(),
+      id:
+          json['Uid']?.toString() ?? '',
+      name: (
+        json['Nev'] ??
+        json['TanarNeve'] ??
+        ''
+      ).toString().trim(),
     );
   }
 
-  factory Teacher.fromString(String string) {
+  factory Teacher.fromString(
+    String string,
+  ) {
     return Teacher(
-      id: string.trim().replaceAll(' ', '').toLowerCase().specialChars(),
+      id: string
+          .trim()
+          .replaceAll(' ', '')
+          .toLowerCase()
+          .specialChars(),
       name: string.trim(),
     );
   }
 
   @override
   bool operator ==(other) {
-    if (other is! Teacher) return false;
+    if (other is! Teacher) {
+      return false;
+    }
+
     return id == other.id;
   }
 
   @override
-  int get hashCode => id.hashCode;
+  int get hashCode =>
+      id.hashCode;
 }

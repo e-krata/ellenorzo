@@ -11,9 +11,24 @@ class School {
 
   factory School.fromJson(Map json) {
     return School(
-      instituteCode: json["instituteCode"] ?? "",
-      name: (json["name"] ?? "").trim(),
-      city: json["city"] ?? "",
+      instituteCode: (
+        json['instituteCode'] ??
+        json['IntezmenyAzonosito'] ??
+        json['Kod'] ??
+        ''
+      ).toString(),
+      name: (
+        json['name'] ??
+        json['IntezmenyNev'] ??
+        json['Nev'] ??
+        ''
+      ).toString().trim(),
+      city: (
+        json['city'] ??
+        json['TelepulesNev'] ??
+        json['Varos'] ??
+        ''
+      ).toString().trim(),
     );
   }
 }

@@ -8,8 +8,6 @@ class Exam {
   DateTime date;
   DateTime writeDate;
   Category? mode;
-  // int? subjectIndex;
-  // String subjectName;
   GradeSubject subject;
   Teacher teacher;
   String description;
@@ -21,8 +19,6 @@ class Exam {
     required this.date,
     required this.writeDate,
     this.mode,
-    // this.subjectIndex,
-    // required this.subjectName,
     required this.subject,
     required this.teacher,
     required this.description,
@@ -30,25 +26,94 @@ class Exam {
     this.json,
   });
 
-  factory Exam.fromJson(Map json) {
+  factory Exam.fromJson(
+    Map json,
+  ) {
+    final mode =
+        _map(json['Modja']);
+
+    final subject =
+        _map(json['Tantargy']);
+
+    final group =
+        _map(json['OsztalyCsoport']);
+
     return Exam(
-      id: json["Uid"] ?? "",
-      date: json["BejelentesDatuma"] != null
-          ? DateTime.parse(json["BejelentesDatuma"]).toLocal()
-          : DateTime(0),
-      writeDate: json["Datum"] != null
-          ? DateTime.parse(json["Datum"]).toLocal()
-          : DateTime(0),
-      mode: json["Modja"] != null ? Category.fromJson(json["Modja"]) : null,
-      // subjectIndex: json["OrarendiOraOraszama"],
-      // subjectName: json["TantargyNeve"] ?? "",
-      subject: GradeSubject.fromJson(json["Tantargy"] ?? {}),
-      teacher: Teacher.fromString((json["RogzitoTanarNeve"] ?? "").trim()),
-      description: (json["Temaja"] ?? "").trim(),
-      group: json["OsztalyCsoport"] != null
-          ? json["OsztalyCsoport"]["Uid"] ?? ""
-          : "",
+      id:
+          json['Uid']?.toString() ?? '',
+      date:
+          _date(
+        json['BejelentesDatuma'] ??
+            json['Datum'],
+      ),
+      writeDate:
+          _date(
+        json['Datum'],
+      ),
+      mode:
+          mode.isNotEmpty
+              ? Category.fromJson(
+                  mode,
+                )
+              : null,
+      subject:
+          subject.isNotEmpty
+              ? GradeSubject.fromJson(
+                  subject,
+                )
+              : GradeSubject(
+                  id: json['TantargyUid']
+                          ?.toString() ??
+                      '',
+                  category:
+                      Category.fromJson(
+                    {},
+                  ),
+                  name: (
+                    json['TantargyNeve'] ??
+                    json['TantargyNev'] ??
+                    ''
+                  ).toString(),
+                ),
+      teacher:
+          Teacher.fromString(
+        (
+          json['RogzitoTanarNeve'] ??
+          ''
+        ).toString().trim(),
+      ),
+      description: (
+        json['Temaja'] ??
+        json['Tema'] ??
+        ''
+      ).toString().trim(),
+      group: (
+        group['Uid'] ??
+        json['OsztalyCsoportUid'] ??
+        ''
+      ).toString(),
       json: json,
     );
+  }
+
+  static Map _map(
+    dynamic value,
+  ) =>
+      value is Map
+          ? value
+          : <String, dynamic>{};
+
+  static DateTime _date(
+    dynamic value,
+  ) {
+    if (value == null ||
+        value.toString().isEmpty) {
+      return DateTime(0);
+    }
+
+    return DateTime.tryParse(
+          value.toString(),
+        )?.toLocal() ??
+        DateTime(0);
   }
 }

@@ -2,6 +2,7 @@
 
 import 'package:refilc/utils/format.dart';
 import 'package:uuid/uuid.dart';
+
 import 'category.dart';
 import 'subject.dart';
 import 'teacher.dart';
@@ -39,141 +40,338 @@ class Grade {
     this.json,
   });
 
-  factory Grade.fromJson(Map json) {
+  factory Grade.fromJson(
+    Map json,
+  ) {
+    final typeJson =
+        _map(json['Tipus']);
+
+    final valueTypeJson =
+        _map(json['ErtekFajta']);
+
+    final modeJson =
+        _map(json['Mod']);
+
+    final groupJson =
+        _map(json['OsztalyCsoport']);
+
+    final subjectJson =
+        _map(json['Tantargy']);
+
     return Grade(
-      id: json["Uid"] ?? "",
-      date: json["KeszitesDatuma"] != null
-          ? DateTime.parse(json["KeszitesDatuma"]).toLocal()
-          : DateTime(0),
-      value: GradeValue(
-        json["SzamErtek"] ?? 0,
-        json["SzovegesErtek"] ?? "",
-        json["SzovegesErtekelesRovidNev"] ?? "",
-        json["SulySzazalekErteke"] ?? 0,
-        percentage: json["ErtekFajta"] != null
-            ? json["ErtekFajta"]["Uid"] == "3,Szazalekos"
-            : false,
+      id:
+          json['Uid']?.toString() ?? '',
+      date: _date(
+        json['KeszitesDatuma'] ??
+            json['Datum'],
       ),
-      teacher: Teacher.fromString((json["ErtekeloTanarNeve"] ?? "").trim()),
-      description: json["Tema"] ?? "",
-      type: json["Tipus"] != null
-          ? Category.getGradeType(json["Tipus"]["Nev"])
-          : GradeType.unknown,
-      groupId: (json["OsztalyCsoport"] ?? {})["Uid"] ?? "",
-      subject: GradeSubject.fromJson(json["Tantargy"] ?? {}),
-      gradeType: json["ErtekFajta"] != null
-          ? Category.fromJson(json["ErtekFajta"])
-          : null,
-      mode: Category.fromJson(json["Mod"] ?? {}),
-      writeDate: json["RogzitesDatuma"] != null
-          ? DateTime.parse(json["RogzitesDatuma"]).toLocal()
-          : DateTime(0),
-      seenDate: json["LattamozasDatuma"] != null
-          ? DateTime.parse(json["LattamozasDatuma"]).toLocal()
-          : DateTime(0),
-      form: (json["Jelleg"] ?? "Na") != "Na" ? json["Jelleg"] : "",
+      value: GradeValue(
+        _int(json['SzamErtek']),
+        json['SzovegesErtek']
+                ?.toString() ??
+            '',
+        json['SzovegesErtekelesRovidNev']
+                ?.toString() ??
+            '',
+        _int(
+          json['SulySzazalekErteke'],
+        ),
+        percentage:
+            valueTypeJson['Uid']
+                    ?.toString() ==
+                '3,Szazalekos' ||
+            valueTypeJson['Nev']
+                    ?.toString()
+                    .toLowerCase() ==
+                'szazalekos',
+      ),
+      teacher: Teacher.fromString(
+        (
+          json['ErtekeloTanarNeve'] ??
+          json['RogzitoTanarNeve'] ??
+          ''
+        ).toString().trim(),
+      ),
+      description: (
+        json['Tema'] ??
+        json['Temaja'] ??
+        ''
+      ).toString(),
+      type: Category.getGradeType(
+        typeJson['Nev']
+                ?.toString() ??
+            '',
+      ),
+      groupId: (
+        groupJson['Uid'] ??
+        json['OsztalyCsoportUid'] ??
+        ''
+      ).toString(),
+      subject:
+          subjectJson.isNotEmpty
+              ? GradeSubject.fromJson(
+                  subjectJson,
+                )
+              : GradeSubject(
+                  id: json['TantargyUid']
+                          ?.toString() ??
+                      '',
+                  category:
+                      Category.fromJson(
+                    {},
+                  ),
+                  name:
+                      json['TantargyNev']
+                              ?.toString() ??
+                          '',
+                ),
+      gradeType:
+          valueTypeJson.isNotEmpty
+              ? Category.fromJson(
+                  valueTypeJson,
+                )
+              : null,
+      mode:
+          Category.fromJson(
+        modeJson,
+      ),
+      writeDate: _date(
+        json['RogzitesDatuma'] ??
+            json['KeszitesDatuma'],
+      ),
+      seenDate: _date(
+        json['LattamozasDatuma'],
+      ),
+      form:
+          (json['Jelleg'] ?? '')
+                      .toString() ==
+                  'Na'
+              ? ''
+              : (json['Jelleg'] ?? '')
+                  .toString(),
       json: json,
     );
   }
 
-  factory Grade.fromExportJson(Map json) {
+  factory Grade.fromExportJson(
+    Map json,
+  ) {
     return Grade(
       id: const Uuid().v4(),
-      date: json["date"] != null ? DateTime.parse(json["date"]) : DateTime(0),
+      date: json['date'] != null
+          ? DateTime.parse(
+              json['date'],
+            )
+          : DateTime(0),
       value: GradeValue(
-        json["value"] ?? 0,
-        json["value_name"] ?? "",
-        json["value_name"] ?? "",
-        json["weight"] ?? 0,
+        json['value'] ?? 0,
+        json['value_name'] ?? '',
+        json['value_name'] ?? '',
+        json['weight'] ?? 0,
         percentage: false,
       ),
-      teacher: Teacher.fromString((json["teacher"] ?? "").trim()),
-      description: json["description"] ?? "",
-      type: json["type"] != null
-          ? Category.getGradeType(json["type"]
-              .replaceAll("midYear", "evkozi_jegy_ertekeles")
-              .replaceAll("halfYear", "felevi_jegy_ertekeles")
-              .replaceAll("endYear", "evvegi_jegy_ertekeles"))
+      teacher: Teacher.fromString(
+        (json['teacher'] ?? '')
+            .trim(),
+      ),
+      description:
+          json['description'] ?? '',
+      type: json['type'] != null
+          ? Category.getGradeType(
+              json['type']
+                  .replaceAll(
+                    'midYear',
+                    'evkozi_jegy_ertekeles',
+                  )
+                  .replaceAll(
+                    'halfYear',
+                    'felevi_jegy_ertekeles',
+                  )
+                  .replaceAll(
+                    'endYear',
+                    'evvegi_jegy_ertekeles',
+                  ),
+            )
           : GradeType.unknown,
-      groupId: const Uuid().v4(),
+      groupId:
+          const Uuid().v4(),
       subject: GradeSubject(
-          id: const Uuid().v4(),
-          category: Category.fromJson({}),
-          name: json["subject"] ?? ""),
-      mode: Category.fromJson({}),
+        id: const Uuid().v4(),
+        category:
+            Category.fromJson({}),
+        name:
+            json['subject'] ?? '',
+      ),
+      mode:
+          Category.fromJson({}),
       writeDate:
-          json["date"] != null ? DateTime.parse(json["date"]) : DateTime(0),
+          json['date'] != null
+              ? DateTime.parse(
+                  json['date'],
+                )
+              : DateTime(0),
       seenDate:
-          json["date"] != null ? DateTime.parse(json["date"]) : DateTime(0),
-      form: "",
+          json['date'] != null
+              ? DateTime.parse(
+                  json['date'],
+                )
+              : DateTime(0),
+      form: '',
       json: json,
     );
   }
 
-  bool compareTo(dynamic other) {
-    if (runtimeType != other.runtimeType) return false;
-
-    if (id == other.id && seenDate == other.seenDate) {
-      return true;
+  bool compareTo(
+    dynamic other,
+  ) {
+    if (runtimeType !=
+        other.runtimeType) {
+      return false;
     }
 
-    return false;
+    return id == other.id &&
+        seenDate == other.seenDate;
+  }
+
+  static Map _map(
+    dynamic value,
+  ) =>
+      value is Map
+          ? value
+          : <String, dynamic>{};
+
+  static int _int(
+    dynamic value,
+  ) {
+    if (value is int) {
+      return value;
+    }
+
+    if (value is num) {
+      return value.toInt();
+    }
+
+    return int.tryParse(
+          value?.toString() ?? '',
+        ) ??
+        0;
+  }
+
+  static DateTime _date(
+    dynamic value,
+  ) {
+    if (value == null ||
+        value.toString().isEmpty) {
+      return DateTime(0);
+    }
+
+    return DateTime.tryParse(
+          value.toString(),
+        )?.toLocal() ??
+        DateTime(0);
   }
 }
 
 class GradeValue {
   int _value;
-  set value(int v) => _value = v;
+
+  set value(int v) =>
+      _value = v;
+
   int get value {
-    String _valueName = valueName.toLowerCase().specialChars();
+    String _valueName =
+        valueName
+            .toLowerCase()
+            .specialChars();
+
     if (_value == 0 &&
-        ["peldas", "jo", "valtozo", "rossz", "hanyag"].contains(_valueName)) {
+        [
+          'peldas',
+          'jo',
+          'valtozo',
+          'rossz',
+          'hanyag',
+        ].contains(_valueName)) {
       switch (_valueName) {
-        case "peldas":
+        case 'peldas':
           return 5;
-        case "jo":
+
+        case 'jo':
           return 4;
-        case "valtozo":
+
+        case 'valtozo':
           return 3;
-        case "rossz":
+
+        case 'rossz':
           return 2;
-        case "hanyag":
+
+        case 'hanyag':
           return 1;
-        // other
-        case "jeles":
+
+        case 'jeles':
           return 5;
-        case "kozepes":
+
+        case 'kozepes':
           return 3;
-        case "elegseges":
+
+        case 'elegseges':
           return 2;
-        case "elegtelen":
+
+        case 'elegtelen':
           return 1;
       }
     }
+
     return _value;
   }
 
   String _valueName;
-  set valueName(String v) => _valueName = v;
-  String get valueName => _valueName.split("(")[0];
+
+  set valueName(String v) =>
+      _valueName = v;
+
+  String get valueName =>
+      _valueName.split('(')[0];
+
   String shortName;
+
   int _weight;
-  set weight(int v) => _weight = v;
+
+  set weight(int v) =>
+      _weight = v;
+
   int get weight {
-    String _valueName = valueName.toLowerCase().specialChars();
+    String _valueName =
+        valueName
+            .toLowerCase()
+            .specialChars();
+
     if (_value == 0 &&
-        ["peldas", "jo", "valtozo", "rossz", "hanyag"].contains(_valueName)) {
+        [
+          'peldas',
+          'jo',
+          'valtozo',
+          'rossz',
+          'hanyag',
+        ].contains(_valueName)) {
       return 0;
     }
+
     return _weight;
   }
 
   final bool _percentage;
-  bool get percentage => _percentage;
 
-  GradeValue(int value, String valueName, this.shortName, int weight,
-      {bool percentage = false})
-      : _value = value,
+  bool get percentage =>
+      _percentage;
+
+  GradeValue(
+    int value,
+    String valueName,
+    this.shortName,
+    int weight, {
+    bool percentage = false,
+  })  : _value = value,
         _valueName = valueName,
         _weight = weight,
         _percentage = percentage;
@@ -189,5 +387,5 @@ enum GradeType {
   endYear,
   levelExam,
   ghost,
-  unknown
+  unknown,
 }

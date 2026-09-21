@@ -7,36 +7,61 @@ class Category {
 
   Category({
     required this.id,
-    this.description = "",
-    this.name = "",
+    this.description = '',
+    this.name = '',
   });
 
-  factory Category.fromJson(Map json) {
+  factory Category.fromJson(
+    Map json,
+  ) {
+    final description =
+        json['Leiras']?.toString() ?? '';
+
+    final name =
+        json['Nev']?.toString() ?? '';
+
     return Category(
-      id: json["Uid"] ?? "",
-      description: json["Leiras"] != "Na" ? json["Leiras"] ?? "" : "",
-      name: json["Nev"] != "Na" ? json["Nev"] ?? "" : "",
+      id:
+          json['Uid']?.toString() ?? '',
+      description:
+          description == 'Na'
+              ? ''
+              : description,
+      name:
+          name == 'Na'
+              ? ''
+              : name,
     );
   }
 
-  static GradeType getGradeType(String string) {
+  static GradeType getGradeType(
+    String string,
+  ) {
     switch (string) {
-      case "evkozi_jegy_ertekeles":
+      case 'evkozi_jegy_ertekeles':
         return GradeType.midYear;
-      case "I_ne_jegy_ertekeles":
+
+      case 'I_ne_jegy_ertekeles':
         return GradeType.firstQ;
-      case "II_ne_jegy_ertekeles":
+
+      case 'II_ne_jegy_ertekeles':
         return GradeType.secondQ;
-      case "felevi_jegy_ertekeles":
+
+      case 'felevi_jegy_ertekeles':
         return GradeType.halfYear;
-      case "III_ne_jegy_ertekeles":
+
+      case 'III_ne_jegy_ertekeles':
         return GradeType.thirdQ;
-      case "IV_ne_jegy_ertekeles":
+
+      case 'IV_ne_jegy_ertekeles':
         return GradeType.fourthQ;
-      case "evvegi_jegy_ertekeles":
+
+      case 'evvegi_jegy_ertekeles':
         return GradeType.endYear;
-      case "osztalyozo_vizsga":
+
+      case 'osztalyozo_vizsga':
         return GradeType.levelExam;
+
       default:
         return GradeType.unknown;
     }
