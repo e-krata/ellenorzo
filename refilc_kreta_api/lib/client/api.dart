@@ -1,145 +1,216 @@
 import 'package:intl/intl.dart';
 
 class KretaAPI {
-  // IDP API
-  static const login = BaseKreta.kretaIdp + KretaApiEndpoints.token;
-  static const logout = BaseKreta.kretaIdp + KretaApiEndpoints.revoke;
-  static const nonce = BaseKreta.kretaIdp + KretaApiEndpoints.nonce;
-  static const clientId = "kreta-ellenorzo-student-mobile-ios";
+  // ============================================================
+  // ÚjKréta
+  // ============================================================
 
-  // ELLENORZO API
-  static String notes(String iss) =>
-      BaseKreta.kreta(iss) + KretaApiEndpoints.notes;
-  static String events(String iss) =>
-      BaseKreta.kreta(iss) + KretaApiEndpoints.events;
-  static String student(String iss) =>
-      BaseKreta.kreta(iss) + KretaApiEndpoints.student;
-  static String grades(String iss) =>
-      BaseKreta.kreta(iss) + KretaApiEndpoints.grades;
-  static String absences(String iss) =>
-      BaseKreta.kreta(iss) + KretaApiEndpoints.absences;
-  static String groups(String iss) =>
-      BaseKreta.kreta(iss) + KretaApiEndpoints.groups;
-  static String groupAverages(String iss, String uid) =>
-      "${BaseKreta.kreta(iss)}${KretaApiEndpoints.groupAverages}?oktatasiNevelesiFeladatUid=$uid";
-  static String averages(String iss, String uid) =>
-      "${BaseKreta.kreta(iss)}${KretaApiEndpoints.averages}?oktatasiNevelesiFeladatUid=$uid";
-  static String timetable(String iss, {DateTime? start, DateTime? end}) =>
-      BaseKreta.kreta(iss) +
-      KretaApiEndpoints.timetable +
-      (start != null && end != null
-          ? "?datumTol=${start.toUtc().toIso8601String()}&datumIg=${end.toUtc().toIso8601String()}"
-          : "");
-  static String exams(String iss) =>
-      BaseKreta.kreta(iss) + KretaApiEndpoints.exams;
-  static String homework(String iss, {DateTime? start, String? id}) =>
-      BaseKreta.kreta(iss) +
-      KretaApiEndpoints.homework +
-      (id != null ? "/$id" : "") +
-      (id == null && start != null
-          ? "?datumTol=${DateFormat('yyyy-MM-dd').format(start)}"
-          : "");
-  static String capabilities(String iss) =>
-      BaseKreta.kreta(iss) + KretaApiEndpoints.capabilities;
+  static const String baseUrl = "https://ujkreta.onrender.com";
+
+  // ============================================================
+  // Authentication
+  // ============================================================
+
+  static const String login = "$baseUrl/connect/token";
+
+  static const String clientId =
+      "krata-ellenorzo-diak-mobil";
+
+  // Az ÚjKréta dokumentációban jelenleg nincs szükség
+  // /nonce hívásra password grant esetén.
+  //
+  // Meghagyjuk null-ként, hogy a régi kódot ne törje össze,
+  // de login közben nem használjuk.
+  static const String nonce = "";
+
+  // ============================================================
+  // Student API
+  // ============================================================
+
+  static const String notes =
+      "$baseUrl/ellenorzo/v3/sajat/Feljegyzesek";
+
+  static const String events =
+      "$baseUrl/ellenorzo/v3/sajat/FaliujsagElemek";
+
+  static const String student =
+      "$baseUrl/ellenorzo/v3/sajat/TanuloAdatlap";
+
+  static const String grades =
+      "$baseUrl/ellenorzo/v3/sajat/Ertekelesek";
+
+  static const String absences =
+      "$baseUrl/ellenorzo/v3/sajat/Mulasztasok";
+
+  static const String groups =
+      "$baseUrl/ellenorzo/v3/sajat/OsztalyCsoportok";
+
+  static const String groupAverages =
+      "$baseUrl/ellenorzo/v3/sajat/Ertekelesek/Atlagok/OsztalyAtlagok";
+
+  static const String averages =
+      "$baseUrl/ellenorzo/v3/sajat/Ertekelesek/Atlagok/TantargyiAtlagok";
+
+  static String timetable({
+    DateTime? start,
+    DateTime? end,
+  }) {
+    String url =
+        "$baseUrl/ellenorzo/v3/sajat/OrarendElemek";
+
+    if (start != null && end != null) {
+      url +=
+          "?datumTol=${Uri.encodeQueryComponent(start.toUtc().toIso8601String())}"
+          "&datumIg=${Uri.encodeQueryComponent(end.toUtc().toIso8601String())}";
+    }
+
+    return url;
+  }
+
+  static const String exams =
+      "$baseUrl/ellenorzo/v3/sajat/BejelentettSzamonkeresek";
+
+  static String homework({
+    DateTime? start,
+    String? id,
+  }) {
+    String url =
+        "$baseUrl/ellenorzo/v3/sajat/HaziFeladatok";
+
+    if (id != null) {
+      url += "/$id";
+    } else if (start != null) {
+      url +=
+          "?datumTol=${Uri.encodeQueryComponent(DateFormat('yyyy-MM-dd').format(start))}";
+    }
+
+    return url;
+  }
+
   static String downloadHomeworkAttachments(
-          String iss, String uid, String type) =>
-      BaseKreta.kreta(iss) +
-      KretaApiEndpoints.downloadHomeworkAttachments(uid, type);
-  static String subjects(String iss, String uid) =>
-      "${BaseKreta.kreta(iss)}${KretaApiEndpoints.subjects}?oktatasiNevelesiFeladatUid=$uid";
-  // Structure:
-  // {
-  //   "Uid": 000,
-  //   "Tantargy": {
-  //       "Uid": 000,
-  //       "Nev": "Irodalom",
-  //       "Kategoria": {
-  //          "Uid": "000,magyar_nyelv_es_irodalom",
-  //          "Nev": "magyar_nyelv_es_irodalom",
-  //          "Leiras": "Magyar nyelv és irodalom"
-  //       },
-  //       "SortIndex": 0,
-  //    },
-  //    "Atlag": null, // float
-  //    "AtlagAlakulasaIdoFuggvenyeben": Array[], // no idea what this is
-  //    "SulyozottOsztalyzatOsszege": null, // int | float
-  //    "SulyozottOsztalyzatSzama": null, // int | float
-  //    "SortIndex": 0
-  // }
-  // refer to https://discord.com/channels/1111649116020285532/1111798771513303102/1148368925969612920
+    String uid,
+  ) {
+    return "$baseUrl/ellenorzo/v3/sajat/Csatolmany/$uid";
+  }
 
-  // ADMIN API
-  static const sendMessage =
-      BaseKreta.kretaAdmin + KretaAdminEndpoints.sendMessage;
-  static String messages(String endpoint) =>
-      BaseKreta.kretaAdmin + KretaAdminEndpoints.messages(endpoint);
-  static String message(String id) =>
-      BaseKreta.kretaAdmin + KretaAdminEndpoints.message(id);
-  static const recipientCategories =
-      BaseKreta.kretaAdmin + KretaAdminEndpoints.recipientCategories;
-  static const availableCategories =
-      BaseKreta.kretaAdmin + KretaAdminEndpoints.availableCategories;
-  static const recipientTeachers =
-      BaseKreta.kretaAdmin + KretaAdminEndpoints.recipientTeachers;
-  static const recipientDirectorate =
-      BaseKreta.kretaAdmin + KretaAdminEndpoints.recipientDirectorate;
-  static const uploadAttachment =
-      BaseKreta.kretaAdmin + KretaAdminEndpoints.uploadAttachment;
-  static String downloadAttachment(String id) =>
-      BaseKreta.kretaAdmin + KretaAdminEndpoints.downloadAttachment(id);
-  static const trashMessage =
-      BaseKreta.kretaAdmin + KretaAdminEndpoints.trashMessage;
-  static const deleteMessage =
-      BaseKreta.kretaAdmin + KretaAdminEndpoints.deleteMessage;
+  static String subjects(String uid) {
+    return "$baseUrl/ellenorzo/v3/sajat/"
+        "Ertekelesek/Atlagok/TantargyiAtlagok"
+        "?oktatasiNevelesiFeladatUid="
+        "${Uri.encodeQueryComponent(uid)}";
+  }
+
+  // ============================================================
+  // Régi admin/message API
+  // ============================================================
+  //
+  // Az ÚjKréta docs jelenlegi diák API-jában ezek nincsenek.
+  // Az alkalmazás fordíthatósága miatt meghagyjuk őket,
+  // de az ÚjKréta szerverhez nem használjuk őket.
+  //
+
+  static const String sendMessage = "";
+  static String messages(String endpoint) => "";
+  static String message(String id) => "";
+  static const String recipientCategories = "";
+  static const String availableCategories = "";
+  static const String recipientTeachers = "";
+  static const String recipientDirectorate = "";
+  static const String uploadAttachment = "";
+  static String downloadAttachment(String id) => "";
+  static const String trashMessage = "";
+  static const String deleteMessage = "";
 }
 
 class BaseKreta {
-  static String kreta(String iss) => "https://$iss.e-kreta.hu";
-  static const kretaIdp = "https://idp.e-kreta.hu";
-  static const kretaAdmin = "https://eugyintezes.e-kreta.hu";
-  static const kretaFiles = "https://files.e-kreta.hu";
+  /// Az ÚjKréta szerver Base URL-je.
+  static const String baseUrl =
+      "https://ujkreta.onrender.com";
+
+  /// Kompatibilitás a régi kóddal.
+  static const String kretaIdp =
+      "https://ujkreta.onrender.com";
+
+  /// Kompatibilitás.
+  static const String kretaAdmin =
+      "https://ujkreta.onrender.com";
+
+  /// Kompatibilitás.
+  static const String kretaFiles =
+      "https://ujkreta.onrender.com";
+
+  /// Régi API-ban az ISS alapján generáltuk a KRÉTA URL-t.
+  /// Az ÚjKréta esetében már nincs ilyen intézményenkénti host.
+  static String kreta(String iss) {
+    return baseUrl;
+  }
 }
 
 class KretaApiEndpoints {
-  static const token = "/connect/token";
-  static const revoke = "/connect/revocation";
-  static const nonce = "/nonce";
-  static const notes = "/ellenorzo/V3/Sajat/Feljegyzesek";
-  static const events = "/ellenorzo/V3/Sajat/FaliujsagElemek";
-  static const student = "/ellenorzo/V3/Sajat/TanuloAdatlap";
-  static const grades = "/ellenorzo/V3/Sajat/Ertekelesek";
-  static const absences = "/ellenorzo/V3/Sajat/Mulasztasok";
-  static const groups = "/ellenorzo/V3/Sajat/OsztalyCsoportok";
-  static const groupAverages =
-      "/ellenorzo/V3/Sajat/Ertekelesek/Atlagok/OsztalyAtlagok";
-  static const averages = "/ellenorzo/V3/idk";
-  static const timetable = "/ellenorzo/V3/Sajat/OrarendElemek";
-  static const exams = "/ellenorzo/V3/Sajat/BejelentettSzamonkeresek";
-  static const homework = "/ellenorzo/V3/Sajat/HaziFeladatok";
-  // static const homeworkDone = "/ellenorzo/V3/Sajat/HaziFeladatok/Megoldva"; // Removed from the API
-  static const capabilities = "/ellenorzo/V3/Sajat/Intezmenyek";
-  static String downloadHomeworkAttachments(String uid, String type) =>
-      "/ellenorzo/V3/Sajat/Csatolmany/$uid";
-  static const subjects =
-      "/ellenorzo/V3/Sajat/Ertekelesek/Atlagok/TantargyiAtlagok";
+  static const String token =
+      "/connect/token";
+
+  static const String notes =
+      "/ellenorzo/v3/sajat/Feljegyzesek";
+
+  static const String events =
+      "/ellenorzo/v3/sajat/FaliujsagElemek";
+
+  static const String student =
+      "/ellenorzo/v3/sajat/TanuloAdatlap";
+
+  static const String grades =
+      "/ellenorzo/v3/sajat/Ertekelesek";
+
+  static const String absences =
+      "/ellenorzo/v3/sajat/Mulasztasok";
+
+  static const String groups =
+      "/ellenorzo/v3/sajat/OsztalyCsoportok";
+
+  static const String groupAverages =
+      "/ellenorzo/v3/sajat/Ertekelesek/Atlagok/OsztalyAtlagok";
+
+  static const String averages =
+      "/ellenorzo/v3/sajat/Ertekelesek/Atlagok/TantargyiAtlagok";
+
+  static const String timetable =
+      "/ellenorzo/v3/sajat/OrarendElemek";
+
+  static const String exams =
+      "/ellenorzo/v3/sajat/BejelentettSzamonkeresek";
+
+  static const String homework =
+      "/ellenorzo/v3/sajat/HaziFeladatok";
+
+  static const String capabilities =
+      "/ellenorzo/v3/sajat/Intezmenyek";
+
+  static String downloadHomeworkAttachments(
+    String uid,
+    String type,
+  ) {
+    return "/ellenorzo/v3/sajat/Csatolmany/$uid";
+  }
+
+  static const String subjects =
+      "/ellenorzo/v3/sajat/Ertekelesek/Atlagok/TantargyiAtlagok";
 }
 
 class KretaAdminEndpoints {
-  //static const messages = "/api/v1/kommunikacio/postaladaelemek/sajat";
-  static const sendMessage = "/api/v1/kommunikacio/uzenetek";
-  static String messages(String endpoint) =>
-      "/api/v1/kommunikacio/postaladaelemek/$endpoint";
-  static String message(String id) =>
-      "/api/v1/kommunikacio/postaladaelemek/$id";
-  static const recipientCategories = "/api/v1/adatszotarak/cimzetttipusok";
-  static const availableCategories = "/api/v1/kommunikacio/cimezhetotipusok";
-  static const recipientTeachers = "/api/v1/kreta/alkalmazottak/tanar";
-  static const recipientDirectorate = "/api/v1/kreta/alkalmazottak/igazgatosag";
-  static const uploadAttachment = "/ideiglenesfajlok";
-  static String downloadAttachment(String id) =>
-      "/api/v1/dokumentumok/uzenetek/$id";
-  static const trashMessage = "/api/v1/kommunikacio/postaladaelemek/kuka";
-  static const deleteMessage = "/api/v1/kommunikacio/postaladaelemek/torles";
-  // profile management
-  static const editProfile = "/api/profilapi/saveprofildata";
+  static const String sendMessage = "";
+  static String messages(String endpoint) => "";
+  static String message(String id) => "";
+  static const String recipientCategories = "";
+  static const String availableCategories = "";
+  static const String recipientTeachers = "";
+  static const String recipientDirectorate = "";
+  static const String uploadAttachment = "";
+
+  static String downloadAttachment(String id) => "";
+
+  static const String trashMessage = "";
+  static const String deleteMessage = "";
+
+  static const String editProfile = "";
 }

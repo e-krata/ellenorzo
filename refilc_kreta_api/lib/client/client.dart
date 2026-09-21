@@ -1,34 +1,32 @@
 // ignore_for_file: avoid_print, use_build_context_synchronously
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-// import 'package:refilc/api/login.dart';
-// import 'package:refilc/api/nonce.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/io_client.dart' as http_io;
+
 import 'package:refilc/api/providers/database_provider.dart';
-import 'package:refilc/api/providers/user_provider.dart';
 import 'package:refilc/api/providers/status_provider.dart';
+import 'package:refilc/api/providers/user_provider.dart';
 import 'package:refilc/models/settings.dart';
 import 'package:refilc/models/user.dart';
-// import 'package:refilc/utils/jwt.dart';
+
 import 'package:refilc_kreta_api/client/api.dart';
-import 'package:http/http.dart' as http;
-import 'package:http/io_client.dart' as http;
-import 'dart:async';
 
 class KretaClient {
   String? accessToken;
   String? refreshToken;
   String? idToken;
   String? userAgent;
+
   late http.Client client;
 
   late final SettingsProvider _settings;
   late final UserProvider _user;
   late final DatabaseProvider _database;
   late final StatusProvider _status;
-
-  // bool _loginRefreshing = false;
 
   KretaClient({
     this.accessToken,
@@ -41,14 +39,24 @@ class KretaClient {
         _database = database,
         _status = status,
         userAgent = settings.config.userAgent {
-    var ioclient = HttpClient();
-    ioclient.badCertificateCallback = _checkCerts;
-    client = http.IOClient(ioclient);
+    final ioClient = HttpClient();
+
+    ioClient.badCertificateCallback = _checkCerts;
+
+    client = http_io.IOClient(ioClient);
   }
 
-  bool _checkCerts(X509Certificate cert, String host, int port) {
+  bool _checkCerts(
+    X509Certificate cert,
+    String host,
+    int port,
+  ) {
     return _settings.developerMode;
   }
+
+  // ============================================================
+  // GET
+  // ============================================================
 
   Future<dynamic> getAPI(
     String url, {
@@ -57,68 +65,115 @@ class KretaClient {
     bool json = true,
     bool rawResponse = false,
   }) async {
-    Map<String, String> headerMap;
-
-    if (rawResponse) json = false;
-
-    if (headers != null) {
-      headerMap = headers;
-    } else {
-      headerMap = {};
+    if (rawResponse) {
+      json = false;
     }
 
-    if (accessToken == null || accessToken == '') {
+    final headerMap = <String, String>{
+      ...(headers ?? {}),
+    };
+
+    if (accessToken == null || accessToken!.isEmpty) {
       accessToken = _user.user?.accessToken;
     }
 
     try {
-      http.Response? res;
+      http.Response? response;
 
-      for (int i = 0; i < 2; i++) {
+      for (int attempt = 0; attempt < 2; attempt++) {
         if (autoHeader) {
-          if (!headerMap.containsKey("authorization") && accessToken != null) {
-            headerMap["authorization"] = "Bearer $accessToken";
+          if (!headerMap.containsKey("authorization") &&
+              accessToken != null &&
+              accessToken!.isNotEmpty) {
+            headerMap["authorization"] =
+                "Bearer $accessToken";
           }
-          if (!headerMap.containsKey("user-agent") && userAgent != null) {
-            headerMap["user-agent"] = "$userAgent";
+
+          if (!headerMap.containsKey("user-agent") &&
+              userAgent != null &&
+              userAgent!.isNotEmpty) {
+            headerMap["user-agent"] = userAgent!;
+          }
+
+          if (!headerMap.containsKey("accept")) {
+            headerMap["accept"] = "application/json";
           }
         }
 
-        res = await client.get(Uri.parse(url), headers: headerMap);
-        _status.triggerRequest(res);
+        response = await client.get(
+          Uri.parse(url),
+          headers: headerMap,
+        );
 
-        if (res.statusCode == 401) {
+        _status.triggerRequest(response);
+
+        if (response.statusCode == 401 && attempt == 0) {
+          print(
+            "DEBUG: GET 401, trying token refresh: $url",
+          );
+
+          final refreshResult = await refreshLogin();
+
+          if (refreshResult != "success") {
+            break;
+          }
+
           headerMap.remove("authorization");
-          print("DEBUG: 401 error, refreshing login");
-          print("DEBUG: 401 error, URL: $url");
-          //await refreshLogin();
-        } else {
-          break;
+
+          await Future.delayed(
+            const Duration(milliseconds: 300),
+          );
+
+          continue;
         }
 
-        // Wait before retrying
-        await Future.delayed(const Duration(milliseconds: 1500));
+        break;
       }
 
-      if (res == null) throw "Login error";
-      if (res.body == 'invalid_grant' || res.body.replaceAll(' ', '') == '') {
-        throw "Auth error";
+      if (response == null) {
+        throw "No response";
+      }
+
+      if (response.body.trim().isEmpty) {
+        return null;
+      }
+
+      if (response.statusCode >= 400) {
+        print(
+          "ERROR: GET $url -> "
+          "${response.statusCode}: ${response.body}",
+        );
+
+        return null;
       }
 
       if (json) {
-        return jsonDecode(res.body);
-      } else if (rawResponse) {
-        return res.bodyBytes;
-      } else {
-        return res.body;
+        return jsonDecode(response.body);
       }
+
+      if (rawResponse) {
+        return response.bodyBytes;
+      }
+
+      return response.body;
     } on http.ClientException catch (error) {
       print(
-          "ERROR: KretaClient.getAPI ($url) ClientException: ${error.message}");
+        "ERROR: KretaClient.getAPI "
+        "($url) ClientException: ${error.message}",
+      );
     } catch (error) {
-      print("ERROR: KretaClient.getAPI ($url) ${error.runtimeType}: $error");
+      print(
+        "ERROR: KretaClient.getAPI "
+        "($url) ${error.runtimeType}: $error",
+      );
     }
+
+    return null;
   }
+
+  // ============================================================
+  // POST
+  // ============================================================
 
   Future<dynamic> postAPI(
     String url, {
@@ -127,64 +182,115 @@ class KretaClient {
     bool json = true,
     Object? body,
   }) async {
-    Map<String, String> headerMap;
+    final headerMap = <String, String>{
+      ...(headers ?? {}),
+    };
 
-    if (headers != null) {
-      headerMap = headers;
-    } else {
-      headerMap = {};
-    }
-
-    if (accessToken == null || accessToken == '') {
+    if (accessToken == null || accessToken!.isEmpty) {
       accessToken = _user.user?.accessToken;
     }
 
     try {
-      http.Response? res;
+      http.Response? response;
 
-      for (int i = 0; i < 2; i++) {
+      for (int attempt = 0; attempt < 2; attempt++) {
         if (autoHeader) {
-          if (!headerMap.containsKey("authorization") && accessToken != null) {
-            headerMap["authorization"] = "Bearer $accessToken";
+          if (!headerMap.containsKey("authorization") &&
+              accessToken != null &&
+              accessToken!.isNotEmpty) {
+            headerMap["authorization"] =
+                "Bearer $accessToken";
           }
-          if (!headerMap.containsKey("user-agent") && userAgent != null) {
-            headerMap["user-agent"] = "$userAgent";
+
+          if (!headerMap.containsKey("user-agent") &&
+              userAgent != null &&
+              userAgent!.isNotEmpty) {
+            headerMap["user-agent"] = userAgent!;
           }
+
           if (!headerMap.containsKey("content-type")) {
-            headerMap["content-type"] = "application/json";
+            headerMap["content-type"] =
+                "application/json";
           }
-          if (url.contains('kommunikacio/uzenetek')) {
-            headerMap["X-Uzenet-Lokalizacio"] = "hu-HU";
+
+          if (!headerMap.containsKey("accept")) {
+            headerMap["accept"] =
+                "application/json";
           }
         }
 
-        res = await client.post(Uri.parse(url), headers: headerMap, body: body);
-        if (res.statusCode == 401) {
-          //await refreshLogin();
+        response = await client.post(
+          Uri.parse(url),
+          headers: headerMap,
+          body: body,
+        );
+
+        _status.triggerRequest(response);
+
+        if (response.statusCode == 401 &&
+            attempt == 0) {
+          print(
+            "DEBUG: POST 401, trying token refresh: $url",
+          );
+
+          final refreshResult = await refreshLogin();
+
+          if (refreshResult != "success") {
+            break;
+          }
+
           headerMap.remove("authorization");
-        } else {
-          break;
+
+          await Future.delayed(
+            const Duration(milliseconds: 300),
+          );
+
+          continue;
         }
 
-        // Wait before retrying
-        await Future.delayed(const Duration(milliseconds: 1500));
+        break;
       }
 
-      if (res == null) throw "Login error";
+      if (response == null) {
+        throw "No response";
+      }
+
+      if (response.body.trim().isEmpty) {
+        return null;
+      }
+
+      if (response.statusCode >= 400) {
+        print(
+          "ERROR: POST $url -> "
+          "${response.statusCode}: ${response.body}",
+        );
+
+        return null;
+      }
 
       if (json) {
-        print(jsonDecode(res.body));
-        return jsonDecode(res.body);
-      } else {
-        return res.body;
+        return jsonDecode(response.body);
       }
+
+      return response.body;
     } on http.ClientException catch (error) {
       print(
-          "ERROR: KretaClient.postAPI ($url) ClientException: ${error.message}");
+        "ERROR: KretaClient.postAPI "
+        "($url) ClientException: ${error.message}",
+      );
     } catch (error) {
-      print("ERROR: KretaClient.postAPI ($url) ${error.runtimeType}: $error");
+      print(
+        "ERROR: KretaClient.postAPI "
+        "($url) ${error.runtimeType}: $error",
+      );
     }
+
+    return null;
   }
+
+  // ============================================================
+  // Multipart
+  // ============================================================
 
   Future<dynamic> sendFilesAPI(
     String url, {
@@ -192,171 +298,208 @@ class KretaClient {
     bool autoHeader = true,
     Map<String, String>? body,
   }) async {
-    Map<String, String> headerMap;
+    final headerMap = <String, String>{
+      ...(headers ?? {}),
+    };
 
-    if (headers != null) {
-      headerMap = headers;
-    } else {
-      headerMap = {};
-    }
-
-    if (accessToken == null || accessToken == '') {
+    if (accessToken == null || accessToken!.isEmpty) {
       accessToken = _user.user?.accessToken;
     }
 
     try {
-      http.StreamedResponse? res;
+      http.StreamedResponse? response;
 
-      for (int i = 0; i < 3; i++) {
+      for (int attempt = 0; attempt < 2; attempt++) {
+        final request = http.MultipartRequest(
+          "POST",
+          Uri.parse(url),
+        );
+
         if (autoHeader) {
-          if (!headerMap.containsKey("authorization") && accessToken != null) {
-            headerMap["authorization"] = "Bearer $accessToken";
+          if (accessToken != null &&
+              accessToken!.isNotEmpty) {
+            request.headers["authorization"] =
+                "Bearer $accessToken";
           }
-          if (!headerMap.containsKey("user-agent") && userAgent != null) {
-            headerMap["user-agent"] = "$userAgent";
-          }
-          if (!headerMap.containsKey("content-type")) {
-            headerMap["content-type"] = "multipart/form-data";
-          }
-          if (url.contains('kommunikacio/uzenetek')) {
-            headerMap["X-Uzenet-Lokalizacio"] = "hu-HU";
+
+          if (userAgent != null &&
+              userAgent!.isNotEmpty) {
+            request.headers["user-agent"] =
+                userAgent!;
           }
         }
 
-        var request = http.MultipartRequest("POST", Uri.parse(url));
-
-        // request.files.add(value)
+        request.headers.addAll(headerMap);
 
         request.fields.addAll(body ?? {});
-        request.headers.addAll(headers ?? {});
 
-        res = await request.send();
+        response = await request.send();
 
-        if (res.statusCode == 401) {
-          headerMap.remove("authorization");
-          //await refreshLogin();
-        } else {
-          break;
+        if (response.statusCode == 401 &&
+            attempt == 0) {
+          final refreshResult = await refreshLogin();
+
+          if (refreshResult != "success") {
+            break;
+          }
+
+          continue;
         }
+
+        break;
       }
 
-      if (res == null) throw "Login error";
+      if (response == null) {
+        return null;
+      }
 
-      print(res.statusCode);
+      print(
+        "DEBUG: multipart POST $url -> "
+        "${response.statusCode}",
+      );
 
-      return res.statusCode;
+      return response.statusCode;
     } on http.ClientException catch (error) {
       print(
-          "ERROR: KretaClient.postAPI ($url) ClientException: ${error.message}");
+        "ERROR: KretaClient.sendFilesAPI "
+        "($url) ClientException: ${error.message}",
+      );
     } catch (error) {
-      print("ERROR: KretaClient.postAPI ($url) ${error.runtimeType}: $error");
+      print(
+        "ERROR: KretaClient.sendFilesAPI "
+        "($url) ${error.runtimeType}: $error",
+      );
     }
+
+    return null;
   }
 
+  // ============================================================
+  // Refresh token
+  // ============================================================
+
   Future<String?> refreshLogin() async {
-    // if (_loginRefreshing) return null;
-    // _loginRefreshing = true;
+    final loginUser = _user.user;
 
-    User? loginUser = _user.user;
-    if (loginUser == null) return null;
-
-    Map<String, String> headers = {
-      "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
-      "accept": "*/*",
-      "user-agent": "eKretaStudent/264745 CFNetwork/1494.0.7 Darwin/23.4.0",
-    };
-
-    if (_settings.presentationMode) {
-      print("DEBUG: refreshLogin: ${loginUser.id}");
-    } else {
-      print("DEBUG: refreshLogin: ${loginUser.id} ${loginUser.name}");
+    if (loginUser == null) {
+      return null;
     }
 
     refreshToken ??= loginUser.refreshToken;
 
-    print("REFRESH TOKEN BELOW");
-    print(refreshToken);
-
-    print(loginUser.accessTokenExpire);
-    print(DateTime.now().toIso8601String());
-
-    if (!DateTime.now().isAfter(loginUser.accessTokenExpire)) {
-      return 'success';
-    }
-
-    if (refreshToken != null) {
-      // print("REFRESHING LOGIN");
-      Map? res = await postAPI(KretaAPI.login,
-          headers: headers,
-          body: User.refreshBody(
-            refreshToken: loginUser.refreshToken,
-            instituteCode: loginUser.instituteCode,
-          ));
-      print("REFRESH RESPONSE BELOW");
-      print(res);
-      if (res != null) {
-        if (res.containsKey("error")) {
-          // remove user if refresh token expired
-          if (res["error"] == "invalid_grant") {
-            // remove user from app
-            // _user.removeUser(loginUser.id);
-            // await _database.store.removeUser(loginUser.id);
-
-            print("invalid refresh token (invalid_grant)");
-
-            // return error
-            return "refresh_token_expired";
-          }
-        }
-
-        if (res.containsKey("access_token")) {
-          accessToken = res["access_token"];
-          loginUser.accessToken = res["access_token"];
-          loginUser.accessTokenExpire =
-              DateTime.now().add(Duration(seconds: (res["expires_in"] - 30)));
-          _database.store.storeUser(loginUser);
-          _user.refresh();
-        }
-        if (res.containsKey("refresh_token")) {
-          refreshToken = res["refresh_token"];
-          loginUser.refreshToken = res["refresh_token"];
-          _database.store.storeUser(loginUser);
-          _user.refresh();
-        }
-        if (res.containsKey("id_token")) {
-          idToken = res["id_token"];
-        }
-        // _loginRefreshing = false;
-        print('successful refresh');
-
-        return 'success';
-      } else {
-        // _loginRefreshing = false;
-        return null;
-      }
-    } else {
-      // _loginRefreshing = false;
+    if (refreshToken == null ||
+        refreshToken!.isEmpty) {
       return null;
     }
 
-    // return null;
-  }
+    if (!DateTime.now().isAfter(
+      loginUser.accessTokenExpire,
+    )) {
+      return "success";
+    }
 
-  Future<void> logout() async {
-    User? loginUser = _user.user;
-    if (loginUser == null) return;
-
-    Map<String, String> headers = {
-      "content-type": "application/x-www-form-urlencoded",
+    final headers = <String, String>{
+      "content-type":
+          "application/x-www-form-urlencoded",
+      "accept": "application/json",
     };
 
-    await postAPI(
-      KretaAPI.logout,
+    print(
+      "DEBUG: refreshing token for "
+      "${loginUser.name}",
+    );
+
+    final response = await postAPI(
+      KretaAPI.login,
       headers: headers,
-      body: User.logoutBody(
-        refreshToken: refreshToken!,
+      autoHeader: false,
+      body: {
+        "grant_type": "refresh_token",
+        "refresh_token": refreshToken!,
+      },
+    );
+
+    if (response == null) {
+      return null;
+    }
+
+    if (response["error"] != null) {
+      if (response["error"] ==
+          "invalid_grant") {
+        print(
+          "ERROR: refresh token expired",
+        );
+
+        return "refresh_token_expired";
+      }
+
+      return null;
+    }
+
+    final newAccessToken =
+        response["access_token"];
+
+    if (newAccessToken == null) {
+      return null;
+    }
+
+    accessToken = newAccessToken;
+
+    loginUser.accessToken =
+        newAccessToken;
+
+    final expiresIn =
+        (response["expires_in"] ?? 43200)
+            as num;
+
+    loginUser.accessTokenExpire =
+        DateTime.now().add(
+      Duration(
+        seconds: expiresIn.toInt() - 30,
       ),
-      json: false,
+    );
+
+    if (response["refresh_token"] != null) {
+      refreshToken =
+          response["refresh_token"];
+
+      loginUser.refreshToken =
+          response["refresh_token"];
+    }
+
+    if (response["id_token"] != null) {
+      idToken = response["id_token"];
+    }
+
+    await _database.store.storeUser(
+      loginUser,
+    );
+
+    _user.refresh();
+
+    print(
+      "DEBUG: token refresh successful",
+    );
+
+    return "success";
+  }
+
+  // ============================================================
+  // Logout
+  // ============================================================
+
+  Future<void> logout() async {
+    // Az ÚjKréta dokumentáció jelenlegi változata
+    // nem definiál revocation endpointot.
+    //
+    // Ezért lokálisan töröljük a kliens tokenjeit.
+
+    accessToken = null;
+    refreshToken = null;
+    idToken = null;
+
+    print(
+      "DEBUG: logged out locally",
     );
   }
 }
