@@ -1,40 +1,54 @@
 name: Build for Android
 
-on: workflow_dispatch
+on:
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v3
-      - name: Download Android keystore
-        id: android_keystore
-        uses: timheuer/base64-to-file@v1.0.3
-        with:
-          fileName: upload-keystore.jks
-          encodedString: ${{ secrets.KEYSTORE_BASE64 }}
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Decode Android keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          test -n "$KEYSTORE_BASE64"
+          echo "$KEYSTORE_BASE64" | base64 --decode > refilc/android/upload-keystore.jks
+
       - name: Create key.properties
         run: |
-          echo "storeFile=${{ steps.android_keystore.outputs.filePath }}" > refilc/android/key.properties
+          echo "storeFile=${{ github.workspace }}/refilc/android/upload-keystore.jks" > refilc/android/key.properties
           echo "storePassword=${{ secrets.STORE_PASSWORD }}" >> refilc/android/key.properties
           echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> refilc/android/key.properties
           echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> refilc/android/key.properties
-      - uses: actions/setup-java@v3
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
         with:
-          distribution: "zulu"
-          java-version: "17.x"
-          cache: "gradle"
-      - uses: subosito/flutter-action@v2
+          distribution: zulu
+          java-version: "17"
+          cache: gradle
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
         with:
           flutter-version: "3.10.2"
-          channel: "stable"
-          cache: "true"
+          channel: stable
+          cache: true
+
       - name: Install dependencies
         run: ./fix-pub.sh
-      - name: Build
-        run: cd refilc && ./build.sh
+
+      - name: Build Android APK
+        run: |
+          cd refilc
+          ./build.sh
+
       - name: Upload Android Release
         uses: actions/upload-artifact@v4
         with:
           name: android-release
-          path: build/outputs/flutter-apk/ekrata-ellenorzo-release.apk
+          path: refilc/build/outputs/flutter-apk/ekrata-ellenorzo-release.apk
