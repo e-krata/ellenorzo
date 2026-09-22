@@ -11,6 +11,7 @@ refilc/.dart_tool/
 refilc/build/
 refilc/android/key.properties
 refilc/android/debug.keystore
+refilc/android/upload-keystore.jks
 
 # refilc_desktop_ui/.flutter-plugins
 # refilc_desktop_ui/.flutter-plugins-dependencies
@@ -33,8 +34,6 @@ refilc_mobile_ui/.dart_tool/
 # filcnaplo_premium/.dart_tool/
 
 .vscode
-.github
-.idea
 .gitmodules
 .gradle
 .kotlin

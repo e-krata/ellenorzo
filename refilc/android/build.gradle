@@ -1,26 +1,8 @@
-// buildscript {
-//     ext.kotlin_version = '1.8.21'
-
-//     ext {
-//         compileSdkVersion   = 34
-//         targetSdkVersion    = 34
-//         appCompatVersion    = "1.1.0"
-//     }
-
-//     repositories {
-//         google()
-//         jcenter()
-//     }
-
-//     dependencies {
-//         classpath 'com.android.tools.build:gradle:7.1.1'
-//         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-//     }
-// }
-
 allprojects {
     repositories {
         google()
+        mavenCentral()
+        // jcenter is deprecated but some old plugins still need it
         jcenter()
         maven {
             // [required] background_fetch
@@ -29,23 +11,42 @@ allprojects {
     }
 }
 
+rootProject.buildDir = '../build'
+
 subprojects {
-    afterEvaluate {project ->
-        if (project.plugins.hasPlugin('android') || project.plugins.hasPlugin('android-library')) {
-            android {
-                compileSdkVersion 34
-                buildToolsVersion '31.0.0'
+    project.buildDir = "${rootProject.buildDir}/${project.name}"
+}
+
+// Auto-fix missing namespace for old Flutter plugins (AGP 8+)
+// IMPORTANT: do this WITHOUT evaluationDependsOn, and only on library plugins
+subprojects { project ->
+    project.plugins.withId("com.android.library") {
+        def android = project.extensions.findByName("android")
+        if (android != null && (android.namespace == null || android.namespace.toString().trim().isEmpty())) {
+            def fallback = project.group?.toString()?.trim()
+            if (fallback == null || fallback.isEmpty() || fallback == "unspecified") {
+                fallback = "com.example.${project.name.replace('-', '_')}"
             }
+            android.namespace = fallback
+            println "Set namespace for ${project.name}: ${fallback}"
         }
     }
 }
 
-rootProject.buildDir = '../build'
-subprojects {
-    project.buildDir = "${rootProject.buildDir}/${project.name}"
-}
-subprojects {
-    project.evaluationDependsOn(':app')
+// Optional: force a modern compileSdk on old plugins
+subprojects { project ->
+    project.plugins.withId("com.android.library") {
+        def android = project.extensions.findByName("android")
+        if (android != null) {
+            try {
+                if (android.compileSdkVersion == null) {
+                    android.compileSdkVersion = 34
+                }
+            } catch (Ignored) {
+                // ignore plugins that expose compileSdk differently
+            }
+        }
+    }
 }
 
 tasks.register("clean", Delete) {
