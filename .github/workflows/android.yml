@@ -45,7 +45,7 @@ jobs:
       - name: Build Android APK
         run: |
           cd refilc
-          ./build.sh
+          bash ./build.sh
 
       - name: Upload Android Release
         uses: actions/upload-artifact@v4
