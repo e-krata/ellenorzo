@@ -34,7 +34,7 @@ jobs:
       - name: Build
         run: cd refilc && ./build.sh
       - name: Upload Android Release
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: android-release
           path: build/outputs/flutter-apk/ekrata-ellenorzo-release.apk
