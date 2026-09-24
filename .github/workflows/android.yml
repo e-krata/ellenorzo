@@ -20,10 +20,21 @@ jobs:
 
       - name: Create key.properties
         run: |
-          echo "storeFile=${{ github.workspace }}/refilc/android/upload-keystore.jks" > refilc/android/key.properties
-          echo "storePassword=${{ secrets.STORE_PASSWORD }}" >> refilc/android/key.properties
-          echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> refilc/android/key.properties
-          echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> refilc/android/key.properties
+          cat > refilc/android/key.properties <<EOF
+          storeFile=${{ github.workspace }}/refilc/android/upload-keystore.jks
+          storePassword=${{ secrets.STORE_PASSWORD }}
+          keyPassword=${{ secrets.KEY_PASSWORD }}
+          keyAlias=${{ secrets.KEY_ALIAS }}
+          EOF
+
+      - name: Create debugkey.properties
+        run: |
+          cat > refilc/android/debugkey.properties <<EOF
+          storeFile=${{ github.workspace }}/refilc/android/upload-keystore.jks
+          storePassword=${{ secrets.STORE_PASSWORD }}
+          keyPassword=${{ secrets.KEY_PASSWORD }}
+          keyAlias=${{ secrets.KEY_ALIAS }}
+          EOF
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -35,17 +46,17 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.27.4"
+          flutter-version: "3.10.2"
           channel: stable
           cache: true
 
       - name: Install dependencies
-        run: bash ./fix-pub.sh
+        run: ./fix-pub.sh
 
       - name: Build Android APK
         run: |
           cd refilc
-          bash ./build.sh
+          ./build.sh
 
       - name: Upload Android Release
         uses: actions/upload-artifact@v4
