@@ -764,7 +764,7 @@ class LiveCardStateA extends State<LiveCard> {
                                         overflow: TextOverflow.ellipsis,
                                         child: liveCard.nextLesson!.room !=
                                                 liveCard.prevLesson!.room
-                                            ? Text("go $diff".i18n.fill([
+                                            ? Localization("go $diff".i18n.fillParams([
                                                 diff != "to room"
                                                     ? (liveCard.nextLesson!
                                                             .getFloor() ??

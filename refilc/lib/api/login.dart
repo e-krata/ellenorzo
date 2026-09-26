@@ -257,7 +257,7 @@ Future<LoginState> loginAPI({
 
     final studentJson =
         await kretaClient.getAPI(
-      KretaAPI.student,
+      KretaAPI.student(instituteCode),
     );
 
     if (studentJson == null) {
@@ -488,7 +488,7 @@ Future<LoginState> newLoginAPI({
 
     final studentJson =
         await kretaClient.getAPI(
-      KretaAPI.student,
+      KretaAPI.student(""),
     );
 
     if (studentJson == null) {

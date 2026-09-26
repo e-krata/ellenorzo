@@ -166,7 +166,9 @@ class HomePageState extends State<HomePage> with TickerProviderStateMixin {
       greeting = "goodevening";
     }
 
-    greeting = customWelcome ? greeting : greeting.i18n.fill([firstName]);
+    greeting = customWelcome
+    ? greeting
+    : Localization(greeting.i18n).fillParams([firstName]);
   }
 
   @override
