@@ -40,7 +40,7 @@ subprojects { project ->
         if (android != null) {
             try {
                 if (android.compileSdkVersion == null) {
-                    android.compileSdkVersion = 36
+                    android.compileSdkVersion = 35
                 }
             } catch (Ignored) {
                 // ignore plugins that expose compileSdk differently
