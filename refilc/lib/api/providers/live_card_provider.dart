@@ -204,7 +204,7 @@ class LiveCardProvider extends ChangeNotifier {
           "color": color,
           "icon": iconFloorMap[diff] ?? "cup.and.saucer",
           "title": "Szünet",
-          "description": "go $diff".i18n.fill([
+          "description": "go $diff".i18n.fillParams([
             diff != "to room" ? (nextLesson!.getFloor() ?? 0) : nextLesson!.room
           ]),
           "startDate": ((prevLesson?.end.millisecondsSinceEpoch ?? 0) -
