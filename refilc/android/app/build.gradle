@@ -25,6 +25,12 @@ if (flutterVersionName == null) {
     throw new GradleException("Undefined VersionName")
 }
 
+/*
+ * Release signing.
+ *
+ * GitHub Actions creates key.properties from repository secrets before
+ * running the release build.
+ */
 def keystoreProperties = new Properties()
 def keystorePropertiesFile = rootProject.file("key.properties")
 
@@ -32,6 +38,12 @@ if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
 }
 
+/*
+ * Debug signing.
+ *
+ * This file is optional. Android's standard debug signing configuration
+ * is used when debugkey.properties does not exist.
+ */
 def debugKeystoreProperties = new Properties()
 def debugKeystorePropertiesFile = rootProject.file("debugkey.properties")
 
@@ -40,7 +52,7 @@ if (debugKeystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace = "hu.refilc.naplo"
+    namespace = "hu.ekrata.ellenorzo"
 
     compileSdk 35
     ndkVersion "27.2.12479018"
@@ -57,7 +69,7 @@ android {
     }
 
     defaultConfig {
-        applicationId "hu.ekrata.ellenorzo"
+        applicationId "hu.refilc.naplo"
 
         minSdk 24
         targetSdk 35
@@ -92,12 +104,16 @@ android {
         }
 
         release {
-            if (keystorePropertiesFile.exists()) {
-                keyAlias keystoreProperties['keyAlias']
-                keyPassword keystoreProperties['keyPassword']
-                storeFile file(keystoreProperties['storeFile'])
-                storePassword keystoreProperties['storePassword']
+            if (!keystorePropertiesFile.exists()) {
+                throw new GradleException(
+                    "key.properties not found. A release build requires Android signing credentials."
+                )
             }
+
+            keyAlias keystoreProperties['keyAlias']
+            keyPassword keystoreProperties['keyPassword']
+            storeFile file(keystoreProperties['storeFile'])
+            storePassword keystoreProperties['storePassword']
         }
     }
 
@@ -107,14 +123,11 @@ android {
         }
 
         release {
-            if (keystorePropertiesFile.exists()) {
-                signingConfig signingConfigs.release
-            } else {
-                signingConfig signingConfigs.debug
-            }
+            signingConfig signingConfigs.release
 
             shrinkResources true
             minifyEnabled true
+
             debuggable false
             jniDebuggable false
             pseudoLocalesEnabled false
