@@ -32,7 +32,7 @@ dependencies:
   flutter_svg: ^2.0.10+1
   flutter_dynamic_icon: ^2.1.0
   # android_dynamic_icon: ^2.0.0
-  i18n_extension: ^15.1.1
+  i18n_extension: 15.1.1
   http: ^1.2.0
   fl_chart: ^0.68.0
   flutter_dynamic_icon_plus: ^1.1.2

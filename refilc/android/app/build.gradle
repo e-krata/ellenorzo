@@ -58,7 +58,7 @@ android {
     ndkVersion "27.2.12479018"
 
     // compileSdkVersion rootProject.ext.compileSdkVersion
-    compileSdkVersion 34
+    compileSdkVersion 36
 
     sourceSets {
         main.java.srcDirs += 'src/main/kotlin'

@@ -1,4 +1,3 @@
-```dart
 // ignore_for_file: avoid_print, use_build_context_synchronously
 
 import 'package:flutter/foundation.dart';
@@ -624,4 +623,3 @@ String instituteCodeFromStudent(
 
   return "";
 }
-```
