@@ -73,7 +73,7 @@ android {
 
     defaultConfig {
         applicationId "hu.ekrata.ellenorzo"
-        minSdkVersion 24
+        minSdkVersion 35
         targetSdkVersion 34
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
