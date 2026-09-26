@@ -21,11 +21,11 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: stable
           flutter-version: "3.35.7"
+          channel: stable
           cache: true
 
-      - name: Check Flutter installation
+      - name: Check Flutter
         run: |
           flutter --version
           flutter doctor -v
@@ -47,11 +47,11 @@ jobs:
           keyAlias=${{ secrets.KEY_ALIAS }}
           EOF
 
-      - name: Install Flutter dependencies
+      - name: Install dependencies
         working-directory: refilc
         run: flutter pub get
 
-      - name: Clean previous build
+      - name: Clean Flutter build
         working-directory: refilc
         run: flutter clean
 
@@ -59,10 +59,14 @@ jobs:
         working-directory: refilc
         run: ./build.sh
 
-      - name: List generated APKs
+      - name: Show generated APKs
         working-directory: refilc
         run: |
-          find build/app/outputs/flutter-apk -maxdepth 1 -type f -print
+          find build/app/outputs/flutter-apk \
+            -maxdepth 1 \
+            -type f \
+            -name "*.apk" \
+            -print
 
       - name: Upload Android Release
         uses: actions/upload-artifact@v4
@@ -72,9 +76,9 @@ jobs:
           if-no-files-found: error
 :::
 
-### `refilc/android/build.gradle`
+### 2. `refilc/android/build.gradle`
 
-:::writing{variant="document" id="74106" title="android/build.gradle"}
+:::writing{variant="document" id="85304" title="refilc/android/build.gradle"}
 ```gradle
 allprojects {
     repositories {
@@ -84,6 +88,27 @@ allprojects {
         // Required by background_fetch.
         maven {
             url "${project(':background_fetch').projectDir}/libs"
+        }
+    }
+}
+
+/*
+ * All Android plugins in the project, including old Flutter plugins such as
+ * image_crop, must compile against a modern Android SDK.
+ *
+ * This is important because image_crop references android:attr/lStar,
+ * which is unavailable when that library is compiled against an old SDK.
+ */
+subprojects {
+    afterEvaluate { project ->
+        if (project.plugins.hasPlugin('com.android.application') ||
+            project.plugins.hasPlugin('com.android.library') ||
+            project.plugins.hasPlugin('android') ||
+            project.plugins.hasPlugin('android-library')) {
+
+            project.android {
+                compileSdk 35
+            }
         }
     }
 }
