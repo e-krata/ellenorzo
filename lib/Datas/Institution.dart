@@ -5,6 +5,12 @@ class Institution {
   String url;
   String city;
 
+  // Az új API string alapú azonosítója.
+  String uid;
+
+  // Az intézmény rövid neve.
+  String shortName;
+
   Institution(
     this.id,
     this.name,
@@ -18,6 +24,28 @@ class Institution {
       return;
     }
 
+    /*
+     * Új API:
+     *
+     * {
+     *   "Uid": "dae0004",
+     *   "Kod": "dae0004",
+     *   "Nev": "SuliKód Gimnázium",
+     *   "RovidNev": "SuliKód",
+     *   "Varos": "Kisvárda"
+     * }
+     *
+     * A régi mezőneveket is megtartjuk,
+     * hogy a korábban mentett adatokkal
+     * továbbra is működjön.
+     */
+
+    uid = _stringValue(
+      json["Uid"] ??
+          json["uid"] ??
+          json["InstituteUid"],
+    );
+
     id = _intValue(
       json["id"] ??
           json["Id"] ??
@@ -25,13 +53,24 @@ class Institution {
     );
 
     name = _stringValue(
-      json["name"] ??
+      json["Nev"] ??
+          json["nev"] ??
+          json["name"] ??
           json["Name"] ??
           json["IntezmenyNev"],
     );
 
+    shortName = _stringValue(
+      json["RovidNev"] ??
+          json["rovidNev"] ??
+          json["shortName"] ??
+          json["ShortName"],
+    );
+
     code = _stringValue(
-      json["code"] ??
+      json["Kod"] ??
+          json["kod"] ??
+          json["code"] ??
           json["Code"] ??
           json["InstituteCode"] ??
           json["IntezmenyAzonosito"],
@@ -43,9 +82,10 @@ class Institution {
     );
 
     city = _stringValue(
-      json["city"] ??
+      json["Varos"] ??
+          json["varos"] ??
+          json["city"] ??
           json["City"] ??
-          json["Varos"] ??
           json["Telepules"],
     );
   }
@@ -53,7 +93,9 @@ class Institution {
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "id": id,
+      "uid": uid,
       "name": name,
+      "shortName": shortName,
       "code": code,
       "url": url,
       "city": city,
