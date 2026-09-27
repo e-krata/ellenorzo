@@ -1,25 +1,6 @@
-
-# A projekt vége
-
-A krétások(?) lassítása miatt a szivacs gyakorlatilag használhatatlanná vált több iskolában, ezért a fejlesztést abbahagyom, több frissítést nem tervezek kiadni. A lassítás okát nem árulták el, emailekre nem válaszolnak. Érdekes, hogy azt írták a weboldalukon, hogy engedik a nem hivatalos alkalmazások fejlesztését illetve emailes megkérdezésre ezt korábban kiegészítették a bevételt szerző alkalmazásokra is (itt direkt úgy kérdeztem rá, hogy a kréta apit használó alkalmazások). Azóta ezt nem vonták vissza, nekem nem tiltották meg a szivacs fejlesztését (habár felvetettek adatvédelmi és szerzői jogi gondokat, ezeknek szerintem azóta eleget tettem többek között az alkalmazás átnevezésével, illetve az adatvédelemmel nem értettem egyet, azt a naih vizsgálja). Helyette sunyin lassítják bizonyos iskolákban, amik felhasználói visszajelzések alpján klikes suliknak tűnnek, de olyan üzenetet is kaptam már, hogy van olyan klikes iskola, ahol még rendesen megy a szivacs.
-
-Bocsánatot kérek azoktól, akiknek a hibáit nem fogom javítani, kifejezetten az értesítésekkel kapcsolatban. Köszönöm mindenkinek, aki segített commitokkal, szerverrel, ötletekkel, hibajelentésekkel és értékes információval! Az amúgy opcionális reklámokat már teljesen kiszedtem, többé bevételem nincs a szivacsból, valami 1500 Ft körüli összeg jött össze, amit ki se tudok venni az admobból, mert nem éri el azt a minimumot, amitől kivehetném. :pensive:
-
-A repot és az alkalmázást nem tervezem leszedni, amíg a krétások nem mondják azt, hogy tilos a fejlesztés, de több commitot ne várjatok tőlem. A BSD licensz alapján forkolni szabad (természetesen legális kereteken belül), ha megnevezel, annak örülök, de egyébként tőlem nem kötelező. :wink:
-
-Boa
-2019. 12. 15.
-
-
-A lassítást itt tárgyaljuk: https://github.com/boapps/Szivacs-Naplo/issues/58
-A lassítás mértékét pedig ezen a weboldalon tudjátok követni: http://szivacsstatus.govt.hu/
-
-
 # Szivacs Napló
 
-A Szivacs Napló: egy multiplatformos kliensalkalmazás az e-napló rendszerhez.
-
-Ez a play áruházas verziója a Szivacs Naplónak, amiben vannak opcionális (bekapcsolható, de alapból kikapcsolt) reklámok. A foss branchben van a reklámmentes és google-dependency mentes verzió. Ígérem, hogy soha nem lesz erőltetett reklám a Szivacsban és mindig lesz egy "Google Play Services"-mentes teljesen FOSS verziója is az appnak.
+A Szivacs Napló: egy multiplatformos kliensalkalmazás az eKráta rendszerhez.
 
 
 #### Jelenlegi funkciók:
@@ -33,6 +14,7 @@ Ez a play áruházas verziója a Szivacs Naplónak, amiben vannak opcionális (b
 * sötét téma és személyre szabható színek
 * értesítések
 * grafikonok
+* új, modernebb UI
 
 ## Letöltés
 #### Forráskódból:
@@ -49,8 +31,6 @@ Ez a play áruházas verziója a Szivacs Naplónak, amiben vannak opcionális (b
 
 #### iOS:
 Az alkalmazás működik iOS-en is, mert Flutterben készült, de az AppStore-ba nem tettem fel, mert a fejlesztői fiók meglehetősen költséges.
-
-Ennek ellenére [hajducsekb](https://github.com/hajducsekb) legyártott egy [.ipa fájlt](https://www.dropbox.com/s/3vzrqagpfhb6g8l/flutter_naplo.ipa?dl=0), amit Cydia Impactorral fel lehet telepíteni. [További infó a telepítésről](https://github.com/boapps/e-Szivacs-2/issues/30)
 
 
 
