@@ -1,238 +1,228 @@
 import 'dart:async';
-import 'dart:convert' show json, utf8;
+import 'dart:convert';
 
-import 'package:e_szivacs/Datas/Lesson.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:http/http.dart' as http;
 
 import '../Datas/User.dart';
-import '../Utils/Saver.dart';
-import '../Utils/StringFormatter.dart';
 import '../globals.dart' as globals;
 
 class RequestHelper {
+  // ========== KRÁTA MOCK BEÁLLÍTÁSOK ==========
+  // Cseréld ki, ha más a te instance-od
+  static const String BASE_URL = 'https://ujkreta.onrender.com';
 
-  static const String CLIENT_ID = "919e0c1c-76a2-4646-a2fb-7085bbbf3c56";
-  static const String GRANT_TYPE = "password";
-  static const String SETTINGS_API_URL = "https://www.e-szivacs.org/mirror/settings.json";
-  static const String INSTITUTES_API_URL = "https://www.e-szivacs.org/mirror/school-list.json";
-  static const String FAQ_API_URL = "https://raw.githubusercontent.com/boapps/e-Szivacs-2/master/gyik.md";
-  static const String TOS_API_URL = "https://www.e-szivacs.org/adatkezeles_es_feltetelek.html";
+  // Régi konstansok (kompatibilitás miatt meghagyva)
+  static const String CLIENT_ID = 'kreta-ellenorzo-mobile';
+  static const String GRANT_TYPE = 'password';
 
   void showError(String msg) {
     Fluttertoast.showToast(
-        msg: msg,
-        backgroundColor: Colors.red,
-        textColor: Colors.white,
-        fontSize: 16.0
+      msg: msg,
+      backgroundColor: Colors.red,
+      textColor: Colors.white,
+      fontSize: 16.0,
     );
   }
 
   void showSuccess(String msg) {
     Fluttertoast.showToast(
-        msg: msg,
-        backgroundColor: Colors.green,
-        textColor: Colors.white,
-        fontSize: 16.0
+      msg: msg,
+      backgroundColor: Colors.green,
+      textColor: Colors.white,
+      fontSize: 16.0,
     );
   }
 
-  Future<String> getInstitutes() async {
-    String institutesBody = utf8.decode((await http.get(INSTITUTES_API_URL)).bodyBytes);
-    return institutesBody;
-  }
-
-  void refreshSzivacsSettigns() async {
+  // ========== TOKEN ==========
+  Future<String?> getBearerToken(User user, bool showErrors) async {
     try {
-      String settings = utf8.decode((await http.get(SETTINGS_API_URL)).bodyBytes);
-      Map settingsJson = json.decode(settings);
-      globals.latestVersion = globals.isBeta ? settingsJson["BetaVersion"] : settingsJson["CurrentAppVersion"];
-      globals.userAgent = globals.behaveNicely ? "szivacs_naplo" : (settingsJson["FillableUserAgent"]);
-    } catch (e) {
-      print(e);
-    }
-  }
+      final response = await http.post(
+        Uri.parse('$BASE_URL/connect/token'),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: {
+          'grant_type': GRANT_TYPE,
+          'username': user.username,
+          'password': user.password,
+        },
+      );
 
-  Future<String> getFAQ() async {
-    String faq = (await http.get(FAQ_API_URL)).body;
-    return faq;
-  }
-
-  Future<String> getTOS() async {
-    String tos = utf8.decode((await http.get(TOS_API_URL)).bodyBytes);
-    return tos;
-  }
-
-  Future<String> getStuffFromUrl(String url, String accessToken, String schoolCode) async {
-    if (accessToken != null) {
-      http.Response response = await http.get(
-          url,
-          headers: {
-            "HOST": schoolCode + ".e-kreta.hu",
-
-            "User-Agent": globals.userAgent,
-
-            "Authorization": "Bearer " + accessToken
-          });
-
-      return response.body;
-    }
-  }
-
-  Future<String> getTests(String accessToken, String schoolCode) =>
-      getStuffFromUrl("https://" + schoolCode + ".e-kreta.hu/mapi/api/v1/BejelentettSzamonkeres?DatumTol=null&DatumIg=null", accessToken, schoolCode);
-
-  Future<String> getMessages(String accessToken, String schoolCode) =>
-      getStuffFromUrl("https://eugyintezes.e-kreta.hu/integration-kretamobile-api/v1/kommunikacio/postaladaelemek/sajat", accessToken, schoolCode);
-
-  Future<String> getMessageById(int id, String accessToken, String schoolCode) =>
-      getStuffFromUrl("https://eugyintezes.e-kreta.hu/integration-kretamobile-api/v1/kommunikacio/postaladaelemek/$id", accessToken, schoolCode);
-
-  Future<String> getEvaluations(String accessToken, String schoolCode) =>
-      getStuffFromUrl("https://" + schoolCode + ".e-kreta.hu"
-          + "/mapi/api/v1/Student", accessToken, schoolCode);
-
-  Future<String> getHomework(String accessToken, String schoolCode,
-      int id) => getStuffFromUrl("https://" + schoolCode +
-      ".e-kreta.hu/mapi/api/v1/HaziFeladat/TanuloHaziFeladatLista/" +
-      id.toString(), accessToken, schoolCode);
-
-  Future<String> getHomeworkByTeacher(String accessToken,
-      String schoolCode, int id) => getStuffFromUrl("https://" + schoolCode +
-      ".e-kreta.hu/mapi/api/v1/HaziFeladat/TanarHaziFeladat/" + id.toString(),
-      accessToken, schoolCode);
-
-  Future<String> getEvents(String accessToken, String schoolCode) =>
-      getStuffFromUrl("https://" + schoolCode + ".e-kreta.hu/mapi/api/v1/Event",
-          accessToken, schoolCode);
-
-  Future<String> getTimeTable(
-      String from, String to, String accessToken, String schoolCode) =>
-      getStuffFromUrl("https://" +
-          schoolCode +
-          ".e-kreta.hu/mapi/api/v1/Lesson?fromDate=" +
-          from +
-          "&toDate=" +
-          to, accessToken, schoolCode);
-
-  Future<String> getBearer(String jsonBody, String schoolCode, bool showErrors) async {
-    http.Response response;
-    try {
-      response = await http.post("https://" + schoolCode + ".e-kreta.hu/idp/api/v1/Token",
-          headers: {
-            "HOST": schoolCode + ".e-kreta.hu",
-            "Content-Type": "application/x-www-form-urlencoded; charset=utf-8",
-            "User-Agent": globals.userAgent
-
-          },
-          body: jsonBody);
-
-      return response.body;
-    } catch (e) {
-      if (showErrors)
-        showError("Hálózati hiba");
-      return null;
-    }
-  }
-
-  void uploadHomework(String homework, Lesson lesson, User user) async {
-    Map body = {
-      "OraId": lesson.id.toString(),
-      "OraDate": dateToHuman(lesson.date) + "00:00:00",
-      "OraType": lesson.calendarOraType,
-      "HataridoUtc": dateToHuman(lesson.date.add(Duration(days: 2))) + "23:00:00",
-      "FeladatSzovege": homework
-    };
-
-    String token = await getBearerToken(user, true);
-    String jsonBody = json.encode(body);
-
-    try {
-      http.Response response = await http.post("https://" + user.schoolCode + ".e-kreta.hu/mapi/api/v1/HaziFeladat/CreateTanuloHaziFeladat",
-          headers: {
-            "HOST": user.schoolCode + ".e-kreta.hu",
-            "Authorization": "Bearer " + token,
-            "Content-Type": "application/json; charset=utf-8",
-
-            "User-Agent": globals.userAgent
-
-          },
-          body: jsonBody);
-      if (response.statusCode == 200)
-        showSuccess("Házi sikeresen feltöltve");
-      else
-        showError("Hiba történt");
-    } catch (e) {
-      print(e);
-      showError("Hálózati hiba");
-      return null;
-    }
-
-  }
-
-  Future<String> getBearerToken(User user, bool showErrors) async {
-    String body =
-        "institute_code=${user.schoolCode}&"
-        "userName=${user.username}&"
-        "password=${user.password}&"
-        "grant_type=$GRANT_TYPE&"
-        "client_id=$CLIENT_ID";
-
-    try {
-      String bearerResponse = await RequestHelper().getBearer(
-          body, user.schoolCode, showErrors);
-
-      if (bearerResponse != null) {
-        Map<String, dynamic> bearerMap = json.decode(bearerResponse);
-        if (bearerMap["error"] == "invalid_grant" && showErrors)
-          showError("Hibás jelszó vagy felhasználónév");
-
-        String code = bearerMap["access_token"];
-
-        return code;
+      if (response.statusCode == 200) {
+        final map = json.decode(response.body);
+        return map['access_token'] as String?;
+      } else {
+        final err = json.decode(response.body);
+        if (showErrors) {
+          showError(err['error_description'] ?? 'Hibás felhasználónév vagy jelszó');
+        }
+        return null;
       }
     } catch (e) {
-      if (showErrors)
-        showError("hiba");
+      if (showErrors) showError('Hálózati hiba');
       print(e);
+      return null;
     }
+  }
 
+  // Régi getBearer metódus (kompatibilitás)
+  Future<String?> getBearer(String jsonBody, String schoolCode, bool showErrors) async {
+    // A mocknál a schoolCode nem számít, a body-ból kinyerjük a usert
+    try {
+      final uri = Uri.parse('$BASE_URL/connect/token');
+      final response = await http.post(
+        uri,
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: jsonBody.contains('grant_type') ? jsonBody : 'grant_type=password&$jsonBody',
+      );
+      return response.body;
+    } catch (e) {
+      if (showErrors) showError('Hálózati hiba');
+      return null;
+    }
+  }
+
+  // ========== ÁLTALÁNOS GET ==========
+  Future<String?> getStuffFromUrl(String path, String? accessToken, [String? schoolCode]) async {
+    if (accessToken == null) return null;
+
+    try {
+      final response = await http.get(
+        Uri.parse('$BASE_URL$path'),
+        headers: {
+          'Authorization': 'Bearer $accessToken',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return response.body;
+      } else {
+        print('API hiba ${response.statusCode}: ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      print(e);
+      return null;
+    }
+  }
+
+  // ========== DIÁK VÉGPONTOK (KRÁTA mock V3) ==========
+
+  Future<String?> getEvaluations(String accessToken, String schoolCode) async {
+    // Régi: /mapi/api/v1/Student
+    // Új:   /ellenorzo/v3/sajat/Ertekelesek  + profil
+    return getStuffFromUrl('/ellenorzo/v3/sajat/Ertekelesek', accessToken);
+  }
+
+  Future<String?> getStudentProfile(String accessToken) async {
+    return getStuffFromUrl('/ellenorzo/v3/sajat/TanuloAdatlap', accessToken);
+  }
+
+  Future<String?> getTimeTable(String from, String to, String accessToken, String schoolCode) async {
+    // A mock jelenleg nem szűr dátumra a docs szerint, de a path megvan
+    return getStuffFromUrl('/ellenorzo/v3/sajat/OrarendElemek', accessToken);
+  }
+
+  Future<String?> getTests(String accessToken, String schoolCode) async {
+    return getStuffFromUrl('/ellenorzo/v3/sajat/BejelentettSzamonkeresek', accessToken);
+  }
+
+  Future<String?> getAbsences(String accessToken) async {
+    return getStuffFromUrl('/ellenorzo/v3/sajat/Mulasztasok', accessToken);
+  }
+
+  Future<String?> getHomeworks(String accessToken) async {
+    return getStuffFromUrl('/ellenorzo/v3/sajat/HaziFeladatok', accessToken);
+  }
+
+  Future<String?> getEvents(String accessToken, String schoolCode) async {
+    // Faliújság
+    return getStuffFromUrl('/ellenorzo/v3/sajat/FaliujsagElemek', accessToken);
+  }
+
+  Future<String?> getNotes(String accessToken) async {
+    return getStuffFromUrl('/ellenorzo/v3/sajat/Feljegyzesek', accessToken);
+  }
+
+  Future<String?> getGroups(String accessToken) async {
+    return getStuffFromUrl('/ellenorzo/v3/sajat/OsztalyCsoportok', accessToken);
+  }
+
+  Future<String?> getClassAverages(String accessToken) async {
+    return getStuffFromUrl('/ellenorzo/v3/sajat/Ertekelesek/Atlagok/OsztalyAtlagok', accessToken);
+  }
+
+  // Régi homework metódusok (kompatibilitás)
+  Future<String?> getHomework(String accessToken, String schoolCode, int id) async {
+    return getHomeworks(accessToken);
+  }
+
+  Future<String?> getHomeworkByTeacher(String accessToken, String schoolCode, int id) async {
+    return getHomeworks(accessToken);
+  }
+
+  // Üzenetek (a mockban jelenleg nincs teljes eügyintézés, de meghagyjuk)
+  Future<String?> getMessages(String accessToken, String schoolCode) async {
+    return null; // A mock docsban nincs
+  }
+
+  Future<String?> getMessageById(int id, String accessToken, String schoolCode) async {
     return null;
   }
 
-  void seeMessage(int id, User user) async {
-    try {
-      String code = await getBearerToken(user, true);
+  // ========== SEGÉD ==========
+  Future<String?> getStudentString(User user, bool showErrors) async {
+    final token = await getBearerToken(user, showErrors);
+    if (token == null) return null;
 
-      await http.post("https://eugyintezes.e-kreta.hu//integration-kretamobile-api/v1/kommunikacio/uzenetek/olvasott",
-          headers: {
-            "Authorization": ("Bearer " + code),
-          },
-          body: "{\"isOlvasott\":true,\"uzenetAzonositoLista\":[$id]}");
-    } catch (e) {
-      print(e);
-      showError("Hálózati hiba");
-      return null;
+    // A régi kód a Student endpointot várta, ami tartalmazta a jegyeket is.
+    // Most külön lekérjük a profilt + jegyeket, és összefűzzük ha kell.
+    final profile = await getStudentProfile(token);
+    final grades = await getEvaluations(token, user.schoolCode ?? 'mockschool');
+
+    // Egyszerű kompatibilitási válasz
+    if (profile != null && grades != null) {
+      try {
+        final p = json.decode(profile);
+        final g = json.decode(grades);
+        p['Evaluations'] = g; // hogy a régi parser találjon valamit
+        return json.encode(p);
+      } catch (_) {}
     }
+    return grades ?? profile;
   }
 
-  Future<String> getStudentString(User user, bool showErrors) async {
-    String code = await getBearerToken(user, showErrors);
-
-    String evaluationsString = await getEvaluations(code, user.schoolCode);
-
-    return evaluationsString;
+  Future<String?> getEventsString(User user, bool showErrors) async {
+    final token = await getBearerToken(user, showErrors);
+    if (token == null) return null;
+    return getEvents(token, user.schoolCode ?? 'mockschool');
   }
 
-  Future<String> getEventsString(User user, bool showErrors) async {
-    String code = await getBearerToken(user, showErrors);
-
-    String eventsString = await getEvents(code, user.schoolCode);
-
-    saveEvents(eventsString, user);
-
-    return eventsString;
+  // Dummy / nem használt a mockban
+  Future<String> getInstitutes() async {
+    // A mocknak nincs iskolalistája, fix mockschool
+    return json.encode([
+      {
+        'InstituteCode': 'mockschool',
+        'Name': 'Mock Gimnázium',
+        'Url': BASE_URL,
+      }
+    ]);
   }
 
+  void refreshSzivacsSettigns() async {
+    // nem kell a mockhoz
+  }
+
+  Future<String> getFAQ() async => '';
+  Future<String> getTOS() async => '';
+
+  void uploadHomework(String homework, dynamic lesson, User user) async {
+    showError('A mock API jelenleg nem támogatja a házi feltöltést ezzel a régi formátummal');
+  }
+
+  void seeMessage(int id, User user) async {}
 }
