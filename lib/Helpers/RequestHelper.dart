@@ -14,7 +14,7 @@ class RequestHelper {
   static const String BASE_URL = 'https://ujkreta.onrender.com';
 
   // Régi konstansok (kompatibilitás miatt meghagyva)
-  static const String CLIENT_ID = 'kreta-ellenorzo-mobile';
+  static const String CLIENT_ID = 'ekrata-ellenorzo-mobil';
   static const String GRANT_TYPE = 'password';
 
   void showError(String msg) {
