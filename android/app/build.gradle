@@ -40,7 +40,7 @@ android {
         }
     }
     defaultConfig {
-        applicationId "io.github.boapps.meSzivacs"
+        applicationId "hu.ekrata.ellenorzo"
         minSdkVersion 18
         targetSdkVersion 28
         versionCode 2050

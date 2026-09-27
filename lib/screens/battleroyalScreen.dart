@@ -55,7 +55,7 @@ class BattleRoyaleScreenState extends State<BattleRoyaleScreen> {
           children: <Widget>[
             Center(child:
             Text(
-              "kréta", style: TextStyle(color: Colors.white, fontSize: 50),),),
+              "kráta", style: TextStyle(color: Colors.white, fontSize: 50),),),
             CustomPaint(
               size: Size.infinite,
               painter: DrawingPainter(
