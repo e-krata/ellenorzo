@@ -11,187 +11,128 @@ class Message {
   List<String> attachments;
 
   Message.fromJson(Map json) {
-    if (json == null) {
-      receivers = <String>[];
-      attachments = <String>[];
+    if (json == null)
       return;
+
+    /*
+     * Az új API struktúrája:
+     *
+     * {
+     *   "azonosito": 1001,
+     *   "isElolvasva": false,
+     *   "uzenet": {
+     *     "azonosito": 50001,
+     *     "kuldesDatum": "...",
+     *     "feladoNev": "...",
+     *     "feladoTitulus": "...",
+     *     "szoveg": "...",
+     *     "targy": "...",
+     *     "cimzettLista": [...],
+     *     "csatolmanyok": [...]
+     *   }
+     * }
+     */
+
+    id = _toInt(json["azonosito"]);
+
+    seen = json["isElolvasva"] == true;
+
+    Map message = json["uzenet"];
+
+    if (message == null) {
+      /*
+       * Biztonsági fallback a régebbi JSON formátumhoz.
+       */
+      message = json;
     }
 
-    final Map message = json["uzenet"] is Map
-        ? json["uzenet"]
-        : json;
+    messageId = _toInt(message["azonosito"]);
 
-    id = _intValue(
-      json["azonosito"] ?? json["id"] ?? json["Uid"],
-    );
-
-    messageId = _intValue(
-      json["uzenet"] is Map
-          ? json["uzenet"]["azonosito"] ??
-              json["uzenet"]["id"] ??
-              json["uzenet"]["Uid"]
-          : json["messageId"] ??
-              json["MessageId"] ??
-              json["azonosito"] ??
-              json["id"] ??
-              json["Uid"],
-    );
-
-    seen = _boolValue(
-      json["isElolvasva"] ??
-          json["seen"] ??
-          json["Seen"] ??
-          json["IsRead"],
-    );
-
-    date = _dateValue(
+    date = _parseDate(
       message["kuldesDatum"] ??
           message["date"] ??
-          message["Date"] ??
-          json["kuldesDatum"] ??
-          json["date"] ??
-          json["Date"],
+          message["Date"],
     );
 
-    senderName = _stringValue(
-      message["feladoNev"] ??
-          message["senderName"] ??
-          message["SenderName"],
-    );
+    senderName =
+        message["feladoNev"] ??
+        message["senderName"] ??
+        "";
 
-    senderType = _stringValue(
-      message["feladoTitulus"] ??
-          message["senderType"] ??
-          message["SenderType"],
-    );
+    senderType =
+        message["feladoTitulus"] ??
+        message["senderType"] ??
+        "";
 
-    text = _stringValue(
-      message["szoveg"] ??
-          message["text"] ??
-          message["Text"],
-    );
+    text =
+        message["szoveg"] ??
+        message["text"] ??
+        "";
 
-    subject = _stringValue(
-      message["targy"] ??
-          message["subject"] ??
-          message["Subject"],
-    );
+    subject =
+        message["targy"] ??
+        message["subject"] ??
+        "";
 
-    receivers = <String>[];
+    receivers = new List<String>();
 
-    final dynamic receiverList =
+    var receiverList =
         message["cimzettLista"] ??
-            message["receivers"] ??
-            message["Receivers"];
+        message["receivers"];
 
     if (receiverList is List) {
-      for (final dynamic receiver in receiverList) {
+      for (var receiver in receiverList) {
         if (receiver is Map) {
-          receivers.add(
-            _stringValue(
-              receiver["nev"] ??
-                  receiver["name"] ??
-                  receiver["Name"],
-            ),
-          );
+          if (receiver["nev"] != null)
+            receivers.add(
+                receiver["nev"].toString());
         } else if (receiver != null) {
-          receivers.add(
-            receiver.toString(),
-          );
+          receivers.add(receiver.toString());
         }
       }
     }
 
-    attachments = <String>[];
+    attachments = new List<String>();
 
-    final dynamic attachmentList =
+    var attachmentList =
         message["csatolmanyok"] ??
-            message["attachments"] ??
-            message["Attachments"];
+        message["attachments"];
 
     if (attachmentList is List) {
-      for (final dynamic attachment in attachmentList) {
+      for (var attachment in attachmentList) {
         if (attachment is Map) {
-          attachments.add(
-            _stringValue(
-              attachment["fajlNev"] ??
-                  attachment["fileName"] ??
-                  attachment["FileName"] ??
-                  attachment["nev"] ??
-                  attachment["Name"],
-            ),
-          );
+          if (attachment["fajlNev"] != null)
+            attachments.add(
+                attachment["fajlNev"].toString());
         } else if (attachment != null) {
           attachments.add(
-            attachment.toString(),
-          );
+              attachment.toString());
         }
       }
     }
   }
 
-  static int _intValue(dynamic value) {
-    if (value == null) {
+  static int _toInt(dynamic value) {
+    if (value == null)
+      return null;
+
+    if (value is int)
+      return value;
+
+    return int.tryParse(value.toString());
+  }
+
+  static DateTime _parseDate(dynamic value) {
+    if (value == null)
+      return null;
+
+    if (value is DateTime)
+      return value;
+
+    try {
+      return DateTime.parse(value.toString());
+    } catch (e) {
       return null;
     }
-
-    if (value is int) {
-      return value;
-    }
-
-    if (value is num) {
-      return value.toInt();
-    }
-
-    return int.tryParse(
-      value.toString(),
-    );
-  }
-
-  static bool _boolValue(dynamic value) {
-    if (value == null) {
-      return false;
-    }
-
-    if (value is bool) {
-      return value;
-    }
-
-    if (value is num) {
-      return value != 0;
-    }
-
-    final String stringValue =
-        value.toString().toLowerCase();
-
-    return stringValue == "true" ||
-        stringValue == "1" ||
-        stringValue == "yes";
-  }
-
-  static String _stringValue(dynamic value) {
-    if (value == null) {
-      return "";
-    }
-
-    return value.toString();
-  }
-
-  static DateTime _dateValue(dynamic value) {
-    if (value == null) {
-      return null;
-    }
-
-    if (value is DateTime) {
-      return value;
-    }
-
-    if (value is int) {
-      return DateTime.fromMillisecondsSinceEpoch(value);
-    }
-
-    return DateTime.tryParse(
-      value.toString(),
-    );
   }
 }

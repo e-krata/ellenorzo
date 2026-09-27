@@ -16,7 +16,8 @@ void main() {
 
 class MessageScreen extends StatefulWidget {
   @override
-  MessageScreenState createState() => new MessageScreenState();
+  MessageScreenState createState() =>
+      new MessageScreenState();
 }
 
 class MessageScreenState extends State<MessageScreen> {
@@ -26,7 +27,8 @@ class MessageScreenState extends State<MessageScreen> {
     _onRefresh(showErrors: false);
   }
 
-  List<Message> get messages => globals.selectedAccount.messages;
+  List<Message> get messages =>
+      globals.selectedAccount.messages;
 
   bool hasOfflineLoaded = true;
   bool hasLoaded = true;
@@ -34,58 +36,83 @@ class MessageScreenState extends State<MessageScreen> {
   @override
   Widget build(BuildContext context) {
     return new WillPopScope(
-        onWillPop: () {
-          globals.screen = 0;
-          Navigator.pushReplacementNamed(context, "/main");
-        },
-        child: Scaffold(
-            drawer: GDrawer(),
-            appBar: new AppBar(
-              title: new Text(S.of(context).messages),
-              actions: <Widget>[],
-            ),
-            body: new Container(
-                child: hasOfflineLoaded & (messages != null)
-                    ? new Column(children: <Widget>[
-                        !hasLoaded
-                            ? Container(
-                                child: new LinearProgressIndicator(
-                                  value: null,
-                                ),
-                                height: 3,
-                              )
-                            : Container(
-                                height: 3,
-                              ),
-                        new Expanded(
-                          child: new RefreshIndicator(
-                              child: new ListView.builder(
-                                itemBuilder: _itemBuilder,
-                                itemCount: messages.length,
-                              ),
-                              onRefresh: _onRefresh),
+      onWillPop: () {
+        globals.screen = 0;
+        Navigator.pushReplacementNamed(
+            context, "/main");
+      },
+      child: Scaffold(
+        drawer: GDrawer(),
+        appBar: new AppBar(
+          title: new Text(
+            S.of(context).messages,
+          ),
+          actions: <Widget>[],
+        ),
+        body: new Container(
+          child: hasOfflineLoaded &&
+                  (messages != null)
+              ? new Column(
+                  children: <Widget>[
+                    !hasLoaded
+                        ? Container(
+                            child:
+                                new LinearProgressIndicator(
+                              value: null,
+                            ),
+                            height: 3,
+                          )
+                        : Container(
+                            height: 3,
+                          ),
+                    new Expanded(
+                      child: new RefreshIndicator(
+                        child: new ListView.builder(
+                          itemBuilder: _itemBuilder,
+                          itemCount: messages.length,
                         ),
-                ])
-                    : new Center(child: new CircularProgressIndicator()))));
+                        onRefresh: _onRefresh,
+                      ),
+                    ),
+                  ],
+                )
+              : new Center(
+                  child:
+                      new CircularProgressIndicator(),
+                ),
+        ),
+      ),
+    );
   }
 
-  Future<Null> _onRefresh({bool showErrors=true}) async {
+  Future<Null> _onRefresh(
+      {bool showErrors = true}) async {
     setState(() {
       hasLoaded = false;
     });
 
-    Completer<Null> completer = new Completer<Null>();
+    Completer<Null> completer =
+        new Completer<Null>();
 
-    await globals.selectedAccount.refreshStudentString(false, showErrors);
+    await globals.selectedAccount
+        .refreshStudentString(false, showErrors);
 
     hasLoaded = true;
 
-    if (mounted) setState(() => completer.complete());
+    if (mounted) {
+      setState(() {
+        completer.complete();
+      });
+    }
+
     return completer.future;
   }
 
-  Widget _itemBuilder(BuildContext context, int index) {
+  Widget _itemBuilder(
+      BuildContext context, int index) {
     Widget sep = new Container();
+
+    Message message = messages[index];
 
     return new Column(
       children: <Widget>[
@@ -94,52 +121,91 @@ class MessageScreenState extends State<MessageScreen> {
           height: index != 0 ? 2.0 : 0.0,
         ),
         new ListTile(
-          //leading: new Container(),
           title: new Text(
-            messages[index].subject,
+            message.subject ?? "",
             style: TextStyle(
-                fontWeight: !messages[index].seen
-                    ? FontWeight.bold
-                    : FontWeight.normal),
+              fontWeight: !message.seen
+                  ? FontWeight.bold
+                  : FontWeight.normal,
+            ),
           ),
           subtitle: new Text(
-            messages[index].senderName,
+            message.senderName ?? "",
             style: TextStyle(
-                fontWeight: !messages[index].seen
-                    ? FontWeight.bold
-                    : FontWeight.normal),
+              fontWeight: !message.seen
+                  ? FontWeight.bold
+                  : FontWeight.normal,
+            ),
           ),
           trailing: new Column(
             children: <Widget>[
               new Text(
-                dateToHuman(messages[index].date),
+                message.date != null
+                    ? dateToHuman(message.date)
+                    : "",
                 style: TextStyle(
-                    fontWeight: !messages[index].seen
-                        ? FontWeight.bold
-                        : FontWeight.normal),
+                  fontWeight: !message.seen
+                      ? FontWeight.bold
+                      : FontWeight.normal,
+                ),
               ),
               new Text(
-                dateToWeekDay(messages[index].date),
+                message.date != null
+                    ? dateToWeekDay(message.date)
+                    : "",
                 style: TextStyle(
-                    fontWeight: !messages[index].seen
-                        ? FontWeight.bold
-                        : FontWeight.normal),
+                  fontWeight: !message.seen
+                      ? FontWeight.bold
+                      : FontWeight.normal,
+                ),
               ),
             ],
           ),
-          onTap: () {
-            if (!messages[index].seen) {
+          onTap: () async {
+            /*
+             * Az új API-nál az olvasottnak jelöléshez
+             * a postafiók-elem külső azonosítója kell:
+             *
+             * POST
+             * /integration-kretamobile-api/v1/
+             * kommunikacio/uzenetek/olvasott
+             *
+             * {
+             *   "isOlvasott": true,
+             *   "uzenetAzonositoLista": [id]
+             * }
+             */
+            if (!message.seen) {
               setState(() {
-                messages[index].seen = true;
-                RequestHelper().seeMessage(
-                    messages[index].id, globals.selectedAccount.user);
+                message.seen = true;
               });
+
+              try {
+                String token =
+                    await RequestHelper()
+                        .getBearerToken(
+                            globals.selectedAccount.user,
+                            false);
+
+                if (token != null) {
+                  await RequestHelper()
+                      .markMessagesAsRead(
+                    token,
+                    <int>[message.id],
+                  );
+                }
+              } catch (e) {
+                print(e);
+              }
             }
+
             return showDialog(
                   barrierDismissible: true,
                   context: context,
-                  builder: (BuildContext context) {
-                    return new MessageDialog(messages[index]);
+                  builder:
+                      (BuildContext context) {
+                    return new MessageDialog(
+                        message);
                   },
                 ) ??
                 false;
@@ -152,6 +218,5 @@ class MessageScreenState extends State<MessageScreen> {
   @override
   void dispose() {
     super.dispose();
-    MessageScreenState().deactivate();
   }
 }
