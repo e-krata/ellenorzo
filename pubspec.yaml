@@ -1,6 +1,9 @@
 name: szivacsnaplo
 description: eKRÀTA kompatibilis ellenőrző
 
+environment:
+  sdk: ">=2.12.0 <4.0.0"
+
 dependencies:
   background_fetch: '^0.2.0'
   path_provider: "^0.4.0"
@@ -19,7 +22,7 @@ dependencies:
   charts_flutter: ^0.8.1
   dynamic_theme:
     git:
-      url: git://github.com/Norbert515/dynamic_theme.git
+      url: https://github.com/Norbert515/dynamic_theme.git
   flutter_linkify: ^1.0.3
   flutter_localizations:
     sdk: flutter
@@ -29,18 +32,11 @@ dependencies:
   connectivity: ^0.4.3+7
   json_annotation: ^2.0.0
   sembast: ^2.0.1
-  encrypt: '>=3.1.0'
-  crypto: '>=2.0.6'
+  encrypt: ">=3.1.0"
+  crypto: ">=2.0.6"
   flutter_secure_storage: ^3.2.1+1
-
-flutter_icons:
-  android: "launcher_icon"
-  ios: true
-  image_path: "assets/icon.png"
-
   flutter:
     sdk: flutter
-
   cupertino_icons: ^0.1.0
 
 dev_dependencies:
@@ -50,6 +46,11 @@ dev_dependencies:
   intl_translation: ^0.17.1
   build_runner: ^1.0.0
   json_serializable: ^2.0.0
+
+flutter_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/icon.png"
 
 flutter:
   uses-material-design: true
