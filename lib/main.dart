@@ -1,519 +1,483 @@
+import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/material.dart';
-import 'package:fluttertoast/fluttertoast.dart';
+import 'package:http/http.dart' as http;
 
-import 'Datas/Institution.dart';
-import 'Datas/User.dart';
-import 'Helpers/RequestHelper.dart';
-import 'Utils/AccountManager.dart';
-import 'screens/mainScreen.dart';
-import 'globals.dart' as globals;
+import '../Datas/User.dart';
 
-void main() {
-  runApp(
-    new KrataApp(),
-  );
-}
+/// ÚjKréta API – diák ellenőrző
+/// Base: https://ujkreta.onrender.com
+class RequestHelper {
+  static const String BASE_URL = 'https://ujkreta.onrender.com';
+  static const String CLIENT_ID = 'ekrata-ellenorzo-mobil';
 
-class KrataApp extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return new MaterialApp(
-      title: 'Ellenőrző',
-      debugShowCheckedModeBanner: false,
-      theme: new ThemeData(
-        primarySwatch: Colors.blue,
-        brightness: Brightness.light,
-      ),
-      home: new LoginScreen(),
-    );
-  }
-}
+  static final Map<String, _TokenCache> _tokenCache =
+      <String, _TokenCache>{};
 
-class LoginScreen extends StatefulWidget {
-  final bool fromApp;
-
-  LoginScreen({
-    this.fromApp = false,
-  });
-
-  @override
-  LoginScreenState createState() =>
-      new LoginScreenState();
-}
-
-class LoginScreenState extends State<LoginScreen> {
-  final TextEditingController usernameController =
-      new TextEditingController();
-
-  final TextEditingController passwordController =
-      new TextEditingController();
-
-  final TextEditingController schoolController =
-      new TextEditingController();
-
-  List<Institution> institutions =
-      new List<Institution>();
-
-  Institution selectedInstitution;
-
-  bool loadingInstitutions = false;
-  bool loggingIn = false;
-  bool obscurePassword = true;
-
-  @override
-  void initState() {
-    super.initState();
-
-    loadInstitutions();
+  String _cacheKey(User user) {
+    return (user.username ?? '') + '|' + (user.schoolCode ?? '');
   }
 
-  Future<void> loadInstitutions() async {
-    setState(() {
-      loadingInstitutions = true;
-    });
+  Future<String> getBearerToken(
+    User user,
+    bool showErrors,
+  ) async {
+    final String key = _cacheKey(user);
+    final _TokenCache cached = _tokenCache[key];
 
-    try {
-      String response =
-          await RequestHelper().getInstitutes();
+    if (cached != null &&
+        cached.accessToken != null &&
+        cached.accessToken.isNotEmpty &&
+        cached.expiresAt != null &&
+        cached.expiresAt.isAfter(
+          DateTime.now().add(Duration(seconds: 30)),
+        )) {
+      return cached.accessToken;
+    }
 
-      if (response != null) {
-        dynamic jsonResponse =
-            json.decode(response);
-
-        if (jsonResponse is List) {
-          List<Institution> loaded =
-              new List<Institution>();
-
-          for (dynamic item in jsonResponse) {
-            if (item is Map) {
-              loaded.add(
-                Institution.fromJson(
-                  Map<String, dynamic>.from(item),
-                ),
-              );
-            }
-          }
-
-          if (mounted) {
-            setState(() {
-              institutions = loaded;
-            });
-          }
-        }
+    if (cached != null &&
+        cached.refreshToken != null &&
+        cached.refreshToken.isNotEmpty) {
+      final String refreshed =
+          await _refreshToken(user, cached.refreshToken, showErrors);
+      if (refreshed != null && refreshed.isNotEmpty) {
+        return refreshed;
       }
+    }
+
+    return await _passwordGrant(user, showErrors);
+  }
+
+  Future<String> _passwordGrant(User user, bool showErrors) async {
+    try {
+      final Map<String, String> body = <String, String>{
+        'grant_type': 'password',
+        'username': user.username ?? '',
+        'password': user.password ?? '',
+        'client_id': CLIENT_ID,
+      };
+
+      if (user.schoolCode != null && user.schoolCode.isNotEmpty) {
+        body['institute_code'] = user.schoolCode;
+      }
+
+      final http.Response response = await http.post(
+        Uri.parse('$BASE_URL/connect/token'),
+        headers: <String, String>{
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        },
+        body: body,
+      );
+
+      if (response.statusCode != 200) {
+        if (showErrors) {
+          print(
+            'Token request failed: ${response.statusCode} ${response.body}',
+          );
+        }
+        return null;
+      }
+
+      return _storeTokenResponse(user, response.body, showErrors);
     } catch (e) {
-      print(e);
-    }
-
-    if (mounted) {
-      setState(() {
-        loadingInstitutions = false;
-      });
-    }
-  }
-
-  Future<void> login() async {
-    if (loggingIn) {
-      return;
-    }
-
-    String username =
-        usernameController.text.trim();
-
-    String password =
-        passwordController.text;
-
-    if (username.isEmpty ||
-        password.isEmpty) {
-      showError(
-        'Add meg a felhasználónevet és a jelszót.',
-      );
-      return;
-    }
-
-    if (selectedInstitution == null) {
-      showError(
-        'Válaszd ki az intézményt.',
-      );
-      return;
-    }
-
-    setState(() {
-      loggingIn = true;
-    });
-
-    User user = new User(
-      DateTime.now()
-          .millisecondsSinceEpoch,
-      username,
-      password,
-      username,
-      selectedInstitution.code,
-      selectedInstitution.url,
-      selectedInstitution.name,
-      '',
-      '',
-    );
-
-    try {
-      String token =
-          await RequestHelper()
-              .getBearerToken(
-        user,
-        true,
-      );
-
-      if (token == null ||
-          token.isEmpty) {
-        showError(
-          'Sikertelen bejelentkezés. '
-          'Ellenőrizd a felhasználónevet és a jelszót.',
-        );
-        return;
-      }
-
-      String studentString =
-          await RequestHelper()
-              .getStudentString(
-        user,
-        true,
-      );
-
-      if (studentString == null ||
-          studentString.isEmpty) {
-        showError(
-          'A bejelentkezés sikerült, '
-          'de a tanulói adatok nem tölthetők be.',
-        );
-        return;
-      }
-
-      try {
-        Map studentJson =
-            json.decode(studentString);
-
-        if (studentJson != null) {
-          String studentName =
-              _getStudentName(studentJson);
-
-          if (studentName != null &&
-              studentName.isNotEmpty) {
-            user.name = studentName;
-          }
-        }
-      } catch (e) {
+      if (showErrors) {
         print(e);
       }
-
-      user.schoolCode =
-          selectedInstitution.code;
-
-      user.schoolUrl =
-          selectedInstitution.url;
-
-      user.schoolName =
-          selectedInstitution.name;
-
-      await AccountManager()
-          .addUser(user);
-
-      globals.users =
-          await AccountManager()
-              .getUsers();
-
-      globals.selectedUser = user;
-      globals.selectedSchoolCode =
-          user.schoolCode;
-      globals.selectedSchoolUrl =
-          user.schoolUrl;
-      globals.selectedSchoolName =
-          user.schoolName;
-
-      globals.isLoggedIn = true;
-      globals.isSingle = true;
-      globals.multiAccount = false;
-
-      if (!mounted) {
-        return;
-      }
-
-      Navigator.of(context).pushReplacement(
-        new MaterialPageRoute(
-          builder: (BuildContext context) =>
-              new MainScreen(),
-        ),
-      );
-    } catch (e) {
-      print(e);
-
-      showError(
-        'Hiba történt a bejelentkezés közben.',
-      );
-    } finally {
-      if (mounted) {
-        setState(() {
-          loggingIn = false;
-        });
-      }
+      return null;
     }
   }
 
-  String _getStudentName(Map json) {
-    dynamic value;
+  Future<String> _refreshToken(
+    User user,
+    String refreshToken,
+    bool showErrors,
+  ) async {
+    try {
+      final http.Response response = await http.post(
+        Uri.parse('$BASE_URL/connect/token'),
+        headers: <String, String>{
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        },
+        body: <String, String>{
+          'grant_type': 'refresh_token',
+          'refresh_token': refreshToken,
+          'client_id': CLIENT_ID,
+        },
+      );
 
-    value = json['Nev'];
+      if (response.statusCode != 200) {
+        if (showErrors) {
+          print('Refresh failed: ${response.statusCode} ${response.body}');
+        }
+        _tokenCache.remove(_cacheKey(user));
+        return null;
+      }
 
-    if (value == null) {
-      value = json['nev'];
+      return _storeTokenResponse(user, response.body, showErrors);
+    } catch (e) {
+      if (showErrors) {
+        print(e);
+      }
+      return null;
     }
+  }
 
-    if (value == null) {
-      value = json['Name'];
+  String _storeTokenResponse(User user, String body, bool showErrors) {
+    try {
+      final Map<String, dynamic> jsonResponse = json.decode(body);
+
+      if (jsonResponse['error'] == 'mfa_required') {
+        if (showErrors) {
+          print('MFA required: ${jsonResponse['mfa_token']}');
+        }
+        return null;
+      }
+
+      final dynamic accessToken = jsonResponse['access_token'];
+      if (accessToken == null) {
+        if (showErrors) {
+          print('Token response does not contain access_token.');
+        }
+        return null;
+      }
+
+      final int expiresIn = (jsonResponse['expires_in'] is int)
+          ? jsonResponse['expires_in']
+          : 43200;
+
+      _tokenCache[_cacheKey(user)] = _TokenCache(
+        accessToken: accessToken.toString(),
+        refreshToken: jsonResponse['refresh_token']?.toString(),
+        expiresAt: DateTime.now().add(Duration(seconds: expiresIn - 30)),
+      );
+
+      return accessToken.toString();
+    } catch (e) {
+      if (showErrors) {
+        print(e);
+      }
+      return null;
     }
+  }
 
-    if (value == null) {
-      value = json['name'];
+  void clearTokenCache(User user) {
+    if (user != null) {
+      _tokenCache.remove(_cacheKey(user));
     }
+  }
 
-    if (value == null) {
-      value = json['TanuloNev'];
+  Future<String> _get(
+    String endpoint,
+    String token,
+    bool showErrors,
+  ) async {
+    try {
+      final http.Response response = await http.get(
+        Uri.parse('$BASE_URL$endpoint'),
+        headers: <String, String>{
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      );
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return response.body;
+      }
+
+      if (showErrors) {
+        print('GET $endpoint failed: ${response.statusCode} ${response.body}');
+      }
+      return null;
+    } catch (e) {
+      if (showErrors) {
+        print(e);
+      }
+      return null;
     }
+  }
 
-    if (value == null) {
-      value = json['tanuloNev'];
+  Future<String> _post(
+    String endpoint,
+    String token,
+    Map<String, dynamic> body,
+    bool showErrors,
+  ) async {
+    try {
+      final http.Response response = await http.post(
+        Uri.parse('$BASE_URL$endpoint'),
+        headers: <String, String>{
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: json.encode(body),
+      );
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return response.body;
+      }
+
+      if (showErrors) {
+        print('POST $endpoint failed: ${response.statusCode} ${response.body}');
+      }
+      return null;
+    } catch (e) {
+      if (showErrors) {
+        print(e);
+      }
+      return null;
     }
+  }
 
-    if (value == null) {
-      value = json['FullName'];
-    }
-
-    if (value == null) {
-      value = json['fullName'];
-    }
-
-    if (value == null) {
+  Future<String> getStudentString(User user, bool showErrors) async {
+    final String token = await getBearerToken(user, showErrors);
+    if (token == null) {
       return null;
     }
 
-    return value.toString();
+    final String student = await _get(
+      '/ellenorzo/v3/sajat/TanuloAdatlap',
+      token,
+      showErrors,
+    );
+    if (student == null) {
+      return null;
+    }
+
+    try {
+      final Map<String, dynamic> studentJson = json.decode(student);
+
+      final String evaluations =
+          await _get('/ellenorzo/v3/sajat/Ertekelesek', token, showErrors);
+      if (evaluations != null) {
+        final dynamic evaluationJson = json.decode(evaluations);
+        if (evaluationJson is List) {
+          studentJson['Evaluations'] = evaluationJson;
+          studentJson['Ertekelesek'] = evaluationJson;
+        }
+      }
+
+      final String absences =
+          await _get('/ellenorzo/v3/sajat/Mulasztasok', token, showErrors);
+      if (absences != null) {
+        final dynamic absenceJson = json.decode(absences);
+        if (absenceJson is List) {
+          studentJson['Absences'] = absenceJson;
+          studentJson['Mulasztasok'] = absenceJson;
+        }
+      }
+
+      return json.encode(studentJson);
+    } catch (e) {
+      if (showErrors) {
+        print(e);
+      }
+      return student;
+    }
   }
 
-  void showError(String message) {
-    Fluttertoast.showToast(
-      msg: message,
-      backgroundColor: Colors.red,
-      textColor: Colors.white,
-      fontSize: 16.0,
+  Future<String> getMessages(String token, String schoolCode) async {
+    return await _get(
+      '/integration-kretamobile-api/v1/kommunikacio/postaladaelemek/sajat',
+      token,
+      true,
     );
   }
 
-  @override
-  void dispose() {
-    usernameController.dispose();
-    passwordController.dispose();
-    schoolController.dispose();
-
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return new Scaffold(
-      appBar: new AppBar(
-        title: new Text(
-          'Bejelentkezés',
-        ),
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: new EdgeInsets.all(20),
-          child: new Column(
-            crossAxisAlignment:
-                CrossAxisAlignment.stretch,
-            children: <Widget>[
-              new SizedBox(
-                height: 30,
-              ),
-
-              new Icon(
-                Icons.school,
-                size: 80,
-              ),
-
-              new SizedBox(
-                height: 20,
-              ),
-
-              new Text(
-                'Ellenőrző',
-                textAlign: TextAlign.center,
-                style: new TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-
-              new SizedBox(
-                height: 30,
-              ),
-
-              new TextField(
-                controller: usernameController,
-                keyboardType:
-                    TextInputType.text,
-                decoration:
-                    new InputDecoration(
-                  labelText: 'Felhasználónév',
-                  border:
-                      new OutlineInputBorder(),
-                ),
-              ),
-
-              new SizedBox(
-                height: 16,
-              ),
-
-              new TextField(
-                controller: passwordController,
-                obscureText: obscurePassword,
-                decoration:
-                    new InputDecoration(
-                  labelText: 'Jelszó',
-                  border:
-                      new OutlineInputBorder(),
-                  suffixIcon:
-                      new IconButton(
-                    icon: new Icon(
-                      obscurePassword
-                          ? Icons.visibility
-                          : Icons.visibility_off,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        obscurePassword =
-                            !obscurePassword;
-                      });
-                    },
-                  ),
-                ),
-                onSubmitted: (_) {
-                  login();
-                },
-              ),
-
-              new SizedBox(
-                height: 16,
-              ),
-
-              new InputDecorator(
-                decoration:
-                    new InputDecoration(
-                  labelText: 'Intézmény',
-                  border:
-                      new OutlineInputBorder(),
-                ),
-                child:
-                    loadingInstitutions
-                        ? new Row(
-                            children: <Widget>[
-                              new SizedBox(
-                                width: 20,
-                                height: 20,
-                                child:
-                                    new CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              ),
-                              new SizedBox(
-                                width: 12,
-                              ),
-                              new Text(
-                                'Intézmények betöltése...',
-                              ),
-                            ],
-                          )
-                        : new DropdownButtonHideUnderline(
-                            child:
-                                new DropdownButton<Institution>(
-                              isExpanded: true,
-                              value:
-                                  selectedInstitution,
-                              hint: new Text(
-                                'Válassz intézményt',
-                              ),
-                              items: institutions
-                                  .map(
-                                    (
-                                      Institution institution,
-                                    ) {
-                                      return new DropdownMenuItem<
-                                          Institution>(
-                                        value:
-                                            institution,
-                                        child: new Text(
-                                          institution.name ??
-                                              institution.code ??
-                                              '',
-                                        ),
-                                      );
-                                    },
-                                  )
-                                  .toList(),
-                              onChanged:
-                                  (Institution value) {
-                                setState(() {
-                                  selectedInstitution =
-                                      value;
-                                });
-                              },
-                            ),
-                          ),
-              ),
-
-              new SizedBox(
-                height: 25,
-              ),
-
-              new SizedBox(
-                height: 50,
-                child: new RaisedButton(
-                  onPressed:
-                      loggingIn
-                          ? null
-                          : login,
-                  child:
-                      loggingIn
-                          ? new CircularProgressIndicator(
-                              valueColor:
-                                  new AlwaysStoppedAnimation<
-                                      Color>(
-                                Colors.white,
-                              ),
-                            )
-                          : new Text(
-                              'BEJELENTKEZÉS',
-                            ),
-                ),
-              ),
-
-              new SizedBox(
-                height: 15,
-              ),
-
-              new Text(
-                'Az intézménylista az új KRÉTA API-ból töltődik be.',
-                textAlign: TextAlign.center,
-                style: new TextStyle(
-                  color: Colors.grey,
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+  Future<String> getMessageById(int id, String token, String schoolCode) async {
+    return await _get(
+      '/integration-kretamobile-api/v1/kommunikacio/postaladaelemek/$id',
+      token,
+      true,
     );
   }
+
+  Future<String> markMessagesAsRead(String token, List<int> messageIds) async {
+    return await _post(
+      '/integration-kretamobile-api/v1/kommunikacio/uzenetek/olvasott',
+      token,
+      <String, dynamic>{
+        'isOlvasott': true,
+        'uzenetAzonositoLista': messageIds,
+      },
+      true,
+    );
+  }
+
+  Future<String> sendMessage(
+    String token,
+    String subject,
+    String text,
+    String recipientUid,
+    String recipientName,
+    String senderName,
+    String senderTitle,
+  ) async {
+    return await _post(
+      '/integration-kretamobile-api/v1/kommunikacio/uzenetek',
+      token,
+      <String, dynamic>{
+        'targy': subject,
+        'szoveg': text,
+        'cimzettUid': recipientUid,
+        'cimzettNev': recipientName,
+        'feladoNev': senderName,
+        'feladoTitulus': senderTitle,
+      },
+      true,
+    );
+  }
+
+  Future<String> getEvaluations(String token, String schoolCode) async {
+    return await _get('/ellenorzo/v3/sajat/Ertekelesek', token, true);
+  }
+
+  Future<String> getProfile(String token, String schoolCode) async {
+    return await _get('/ellenorzo/v3/sajat/TanuloAdatlap', token, true);
+  }
+
+  Future<String> getTimeTable(
+    String token,
+    String schoolCode,
+    DateTime startDate,
+    DateTime endDate,
+  ) async {
+    return await _get('/ellenorzo/v3/sajat/OrarendElemek', token, true);
+  }
+
+  Future<String> getTests(String token, String schoolCode) async {
+    return await _get(
+      '/ellenorzo/v3/sajat/BejelentettSzamonkeresek',
+      token,
+      true,
+    );
+  }
+
+  Future<String> getHomework(String token, String schoolCode) async {
+    return await _get('/ellenorzo/v3/sajat/HaziFeladatok', token, true);
+  }
+
+  Future<String> getAbsences(String token, String schoolCode) async {
+    return await _get('/ellenorzo/v3/sajat/Mulasztasok', token, true);
+  }
+
+  Future<String> getNotes(String token, String schoolCode) async {
+    return await _get('/ellenorzo/v3/sajat/Feljegyzesek', token, true);
+  }
+
+  Future<String> getWall(String token, String schoolCode) async {
+    return await _get('/ellenorzo/v3/sajat/FaliujsagElemek', token, true);
+  }
+
+  Future<String> getClassGroups(String token, String schoolCode) async {
+    return await _get('/ellenorzo/v3/sajat/OsztalyCsoportok', token, true);
+  }
+
+  Future<String> getAverages(String token, String schoolCode) async {
+    return await _get(
+      '/ellenorzo/v3/sajat/Ertekelesek/Atlagok/OsztalyAtlagok',
+      token,
+      true,
+    );
+  }
+
+  Future<String> getEventsString(User user, bool showErrors) async {
+    final String token = await getBearerToken(user, showErrors);
+    if (token == null) {
+      return null;
+    }
+
+    final String notes =
+        await _get('/ellenorzo/v3/sajat/Feljegyzesek', token, showErrors);
+    final String wall =
+        await _get('/ellenorzo/v3/sajat/FaliujsagElemek', token, showErrors);
+
+    final List<dynamic> events = <dynamic>[];
+
+    if (notes != null) {
+      try {
+        final dynamic jsonNotes = json.decode(notes);
+        if (jsonNotes is List) {
+          events.addAll(jsonNotes);
+        }
+      } catch (e) {
+        if (showErrors) {
+          print(e);
+        }
+      }
+    }
+
+    if (wall != null) {
+      try {
+        final dynamic jsonWall = json.decode(wall);
+        if (jsonWall is List) {
+          events.addAll(jsonWall);
+        }
+      } catch (e) {
+        if (showErrors) {
+          print(e);
+        }
+      }
+    }
+
+    return json.encode(events);
+  }
+
+  Future<String> getInstitutes() async {
+    try {
+      final http.Response response = await http.get(
+        Uri.parse('$BASE_URL/intezmenyek'),
+        headers: <String, String>{'Accept': 'application/json'},
+      );
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return response.body;
+      }
+
+      return json.encode(<Map<String, dynamic>>[
+        <String, dynamic>{
+          'InstituteCode': 'mockschool',
+          'Kod': 'mockschool',
+          'Name': 'ÚjKréta mock',
+          'Nev': 'ÚjKréta mock',
+          'Url': BASE_URL,
+          'City': '',
+        },
+      ]);
+    } catch (e) {
+      print(e);
+      return json.encode(<Map<String, dynamic>>[
+        <String, dynamic>{
+          'InstituteCode': 'mockschool',
+          'Kod': 'mockschool',
+          'Name': 'ÚjKréta mock',
+          'Nev': 'ÚjKréta mock',
+          'Url': BASE_URL,
+          'City': '',
+        },
+      ]);
+    }
+  }
+
+  Future<String> uploadHomework(
+    String token,
+    String schoolCode,
+    dynamic homework,
+  ) async {
+    return null;
+  }
+}
+
+class _TokenCache {
+  _TokenCache({
+    this.accessToken,
+    this.refreshToken,
+    this.expiresAt,
+  });
+
+  final String accessToken;
+  final String refreshToken;
+  final DateTime expiresAt;
 }
